@@ -8,9 +8,9 @@
 #
 # Author: Ivan (Jonan) Georgiev
 
-from .tf_hooks import *
-from .tf_persist import *
-from .dt_utils import *
+from tf_kit.tf_hooks import *
+from tf_kit.tf_persist import *
+from tf_kit.dt_utils import *
 import sys
 import argparse
 

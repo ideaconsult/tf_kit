@@ -9,10 +9,10 @@
 #
 
 import tensorflow as tf
-from .tf_utils import *
-from .tf_persist import *
-from .tf_hooks import *
-from .dt_utils import *
+from tf_kit.tf_utils import *
+from tf_kit.tf_persist import *
+from tf_kit.tf_hooks import *
+from tf_kit.dt_utils import *
 import argparse
 
 LEARNING_RATE = .001
