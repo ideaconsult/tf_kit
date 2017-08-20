@@ -102,13 +102,13 @@ def tf_prepare_pipe(file_list, data_format,
     Prepares a list of data files to be fed into TF model.
     :param file_list: The list of filenames.
     :param data_format: A format of the data `tf_pipe` or `tf_mem`.
-    :param num_epochs: Number of epochs to run the algorithm. 
+    :param num_epochs: Number of epochs to run the algorithm.
     :param shuffle: Whether to shuffle the names, or not.
     :param delimiter: Delimiter used in the file.
     :param batch_size: Required batch size for the data.
     :param allow_smaller_batches: Whether the last batch is allowed to be smaller.
     :param name: The name for the tensor which is returned.
-    :return: 
+    :return:
     """
     if data_format == TF_FORMAT_CONST:
         data = tf.train.input_producer(tf_const_input(file_list[0], delimiter=delimiter),
@@ -180,7 +180,7 @@ def tf_dense_layer(scope, x, params, empty_func=False, reuse_dict=None):
         biases = tf_get_reuse_variable("biases", [the_size],
                                        initializer=tf.constant_initializer(.0), reuse_dict=reuse_dict)
 
-    layer = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func else \
+    layer = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func and func else \
         func(tf.add(tf.matmul(x, weights), biases), name=scope)
     return layer
 
@@ -301,7 +301,8 @@ def tf_build_architecture(architecture, batch_in, scope_prefix, transpose=False,
 def tf_build_reverse_params(layer, params):
     ptype = params['type']
     ltype = layer['type']
-    layer['func'] = params['func'] if 'func' in params else None
+    if 'func' in params:
+        layer['func'] = params['func']
 
     if ltype == "dense":
         layer['size'] = params['size'] if ptype == "dense" else \
@@ -319,8 +320,8 @@ def tf_reverse_architecture(architecture, final_layer, batch_size=None):
     and convolution-to-dense transitions need to handled, as well as activation functions,
     which actually shift on the next (reversed) layer. This method is used for autoencoders
     architecture building.
-    
-    :param architecture: The forward architecture to be reversed. 
+
+    :param architecture: The forward architecture to be reversed.
     :param final_layer: The final layer to put.
     :param batch_size: The batch size, which is part of some models.
     :return: A list of layers, representing the reversed architecture.
@@ -385,9 +386,7 @@ def tf_loss_function(name):
 
 
 def _tf_static_iteration(sess, iterator, ops, input_op, batch_size, result_idx=None, iter_fn=None):
-    for x in iterator:
-        if x.shape[0] == 0:
-            break
+    def _make_step(x):
         if x.shape[0] < batch_size:
             padding = batch_size - x.shape[0]
             x = np.append(x, np.array([[.0] * x.shape[1]] * padding), axis=0)
@@ -403,14 +402,23 @@ def _tf_static_iteration(sess, iterator, ops, input_op, batch_size, result_idx=N
                 result = result[:batch_size - padding]
         iter_fn(result, x)
 
+    if isinstance(iterator, (list, np.ndarray)):
+        _make_step(iterator)
+    else:
+        for xx in iterator:
+            if xx.shape[0] == 0:
+                break
+            else:
+                _make_step(xx)
+
 
 def tf_validation_run(sess, model, iterator):
     """
-    
-    :param sess: 
-    :param model: 
-    :param iterator: 
-    :return: 
+
+    :param sess:
+    :param model:
+    :param iterator:
+    :return:
     """
     loss_stat = { 'loss': .0, 'count': 0 }
 
@@ -431,13 +439,13 @@ def tf_validation_run(sess, model, iterator):
 
 def tf_generative_run(sess, model, iterator, output_stream=None, output_fmt='%.8f'):
     """
-    
-    :param sess: 
-    :param model: 
-    :param iterator: 
-    :param output_stream: 
-    :param output_fmt: 
-    :return: 
+
+    :param sess:
+    :param model:
+    :param iterator:
+    :param output_stream:
+    :param output_fmt:
+    :return:
     """
 
     if output_stream is None:
@@ -462,12 +470,12 @@ def tf_generative_run(sess, model, iterator, output_stream=None, output_fmt='%.8
 def tf_inference_run(sess, model, iterator, output_stream=None, output_fmt='%.8f'):
     """
 
-    :param sess: 
-    :param model: 
-    :param iterator: 
-    :param output_stream: 
-    :param output_fmt: 
-    :return: 
+    :param sess:
+    :param model:
+    :param iterator:
+    :param output_stream:
+    :param output_fmt:
+    :return:
     """
 
     if output_stream is None:

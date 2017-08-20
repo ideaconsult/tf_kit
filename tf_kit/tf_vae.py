@@ -151,10 +151,10 @@ class VarAutoEncoder():
 
         # In any case we need to invoke creating the reversed architecture
         last_input = tf_build_architecture(rev_arch,
-                                               batch_in=self.z_latent,
-                                               scope_prefix="generate",
-                                               transpose=True,
-                                               data_format=self.data_format)
+                                           batch_in=self.z_latent,
+                                           scope_prefix="generate",
+                                           transpose=True,
+                                           data_format=self.data_format)
 
         return tf_ensure_flat(last_input)
 

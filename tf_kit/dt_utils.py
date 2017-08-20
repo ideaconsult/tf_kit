@@ -67,8 +67,8 @@ class ArrayBatchIter:
         if self._shuffle:
             np.random.shuffle(self._data)
         self._idx = self._batch_size - x.shape[0]
-        x[self._batch_size - self._idx:self._batch_size] = self._data[:self._idx]
-        return x
+
+        return np.concatenate((x, self._data[:self._idx]), axis=0)
 
     def next(self):
         return self.__next__()
@@ -96,14 +96,14 @@ class FileBatchIter:
                  shuffle=False,
                  shuffle_factor=5):
         """
-        
-        :param filename: 
-        :param delimiter: 
-        :param batch_size: 
-        :param allow_smaller_batch: 
-        :param num_epochs: 
-        :param shuffle: 
-        :param shuffle_factor: 
+
+        :param filename:
+        :param delimiter:
+        :param batch_size:
+        :param allow_smaller_batch:
+        :param num_epochs:
+        :param shuffle:
+        :param shuffle_factor:
         """
         self._files = [filenames] if isinstance(filenames, str) else filenames
         self._num_epochs = num_epochs if num_epochs is not None else MAX_EPOCHS
