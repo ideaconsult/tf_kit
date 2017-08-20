@@ -377,6 +377,8 @@ def tf_loss_function(name):
         return loss_base.mean_squared_error
     elif name in ('xentropy', 'log'):
         return loss_base.log_loss
+    elif name in ('softmax'):
+        return loss_base.softmax_cross_entropy
     elif name == "hinge":
         return loss_base.hinge_loss
     elif name in ('cosine', 'cos'):

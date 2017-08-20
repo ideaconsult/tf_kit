@@ -13,13 +13,8 @@ from tf_kit.tf_utils import *
 from tf_kit.tf_persist import *
 from tf_kit.tf_hooks import *
 from tf_kit.dt_utils import *
+from tf_kit.dt_constants import *
 import argparse
-
-LEARNING_RATE = .001
-EPOCHS = 10
-BATCH = 100
-SUMMARY_STEPS = 50
-CHECKPOINT_SECS = 60
 
 
 # Setup the command line arguments base
@@ -44,17 +39,17 @@ argp.add_argument('--validation-format', type=str, dest="validate_format", requi
 
 argp.add_argument('-d', '--delimiter', type=str, required=False, metavar="delimiter", default=None,
                   dest="delimiter", help="The delimiter to be expected in the data files. Default is whitespace.")
-argp.add_argument('-b', '--batch', type=int, required=False, metavar="batch_size", default=BATCH, dest="batch_size",
-                  help="The size of the mini-batches. Default is %d." % BATCH)
+argp.add_argument('-b', '--batch', type=int, required=False, metavar="batch_size", default=DEF_BATCH, dest="batch_size",
+                  help="The size of the mini-batches. Default is %d." % DEF_BATCH)
 
 argp.add_argument('-m', '--model-path', type=str, metavar="model_path", dest="model_path", required=True,
                   help="The path to the model - both for retrieving and storing.")
-argp.add_argument('-c', '--checkpoint', type=int, dest="checkpoint_secs", default=CHECKPOINT_SECS,
+argp.add_argument('-c', '--checkpoint', type=int, dest="checkpoint_secs", default=DEF_CHECKPOINT_SECS,
                   help="Number of seconds between checkpoint saves. "
-                       "Default is %d" % CHECKPOINT_SECS)
-argp.add_argument('-s', '--summary', type=int, dest="summary_steps", default=SUMMARY_STEPS,
+                       "Default is %d" % DEF_CHECKPOINT_SECS)
+argp.add_argument('-s', '--summary', type=int, dest="summary_steps", default=DEF_SUMMARY_STEPS,
                   help="The number of steps between summary dump and validation test. "
-                       "Default is %d" % SUMMARY_STEPS)
+                       "Default is %d" % DEF_SUMMARY_STEPS)
 
 argp.add_argument('-y', '--early', type=int, required=False, metavar="early_stopping_rounds", dest="early",
                   default=None, help="How many steps the loss should not change to decide early stopping. "

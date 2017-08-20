@@ -8,11 +8,7 @@
 import numpy as np
 import random as rnd
 from .nn_utils import packed_images_reader
-
-DT_FORMAT_MEM = "array"
-DT_FORMAT_FILE = "file"
-DT_FORMAT_IMAGE = "images"
-MAX_EPOCHS = 100000
+from .dt_constants import *
 
 
 class ArrayBatchIter:

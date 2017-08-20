@@ -36,10 +36,9 @@
 #
 
 from tensorflow.python.platform import tf_logging
-from .tf_persist import tf_export_graph
 from .tf_utils import *
 from .nn_utils import *
-
+from . import TF_MODELS
 
 DEF_BATCH = 100
 DEF_LEARNING_RATE = .001
@@ -57,7 +56,8 @@ class VarAutoEncoder():
                  learning_rate=None,
                  batch_size=DEF_BATCH,
                  data_format=DEF_DATA_FORMAT,
-                 cost_function=DEF_COST_FUNC):
+                 cost_function=DEF_COST_FUNC,
+                 **kwargs):
 
         """
         Initialize and construct the VAE architecture.
@@ -215,3 +215,6 @@ class VarAutoEncoder():
     @property
     def generator_var(self):
         return self.z_latent
+
+
+TF_MODELS['vae'] = VarAutoEncoder

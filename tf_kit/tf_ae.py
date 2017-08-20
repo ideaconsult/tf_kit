@@ -31,16 +31,11 @@
 #
 
 from tensorflow.python.platform import tf_logging
-from .tf_persist import tf_export_graph
 from .tf_utils import *
 from .nn_utils import *
+from .dt_constants import *
+from . import TF_MODELS
 import re
-
-DEF_BATCH=100
-DEF_LEARNING_RATE=.001
-DEF_DATA_FORMAT="hwc"
-DEF_COST_FUNC="xentropy"
-DEF_NOISE = .0
 
 
 class AutoEncoder():
@@ -52,10 +47,11 @@ class AutoEncoder():
                  input_pipe=None,
                  learning_rate=None,
                  equal_weights=False,
-                 noise_variance=DEF_NOISE,
+                 noise=DEF_NOISE,
                  batch_size=DEF_BATCH,
                  data_format=DEF_DATA_FORMAT,
-                 cost_function=DEF_COST_FUNC):
+                 cost_function=DEF_COST_FUNC,
+                 **kwargs):
 
         """
         Initialize and construct the Auto-encoder architecture.
@@ -64,7 +60,7 @@ class AutoEncoder():
         :param learning_rate: The learning rate to be used with the AdamOptimizer.
         :param equal_weights: Whether to impose equal-weights restriction of corresponding layers
                               of the encoder and decoder.
-        :param noise_variance: Whether to induce noise in the latent variables before decoding,
+        :param noise: Whether to induce noise in the latent variables before decoding,
                                turning this into Denoising Auto-encoder.
         :param batch_size: The size of the mini-batches.
         :param data_format: The data ordering format - `cwh` or `hwc`. Default is the later.
@@ -78,7 +74,7 @@ class AutoEncoder():
         self.cost_function = cost_function
         self.data_format = 'N' + data_format.upper()
         self.final_func = architecture[-1]['func'] if 'func' in architecture[-1] else tf.nn.sigmoid
-        self.noise_variance = noise_variance
+        self.noise_variance = noise
         self.equal_weights = equal_weights
 
         # Initialize, and possible reshape the input
@@ -200,3 +196,5 @@ class AutoEncoder():
     @property
     def generator_var(self):
         return self.z_latent
+
+TF_MODELS['ae'] = AutoEncoder
