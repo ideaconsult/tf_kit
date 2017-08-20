@@ -14,7 +14,6 @@ from tf_kit.nn_utils import *
 from tf_kit.tf_utils import *
 from tf_kit.dt_constants import *
 from tf_kit.tf_persist import tf_export_graph
-from tf_kit import TF_MODELS
 
 argp = argparse.ArgumentParser(
     description="A Variational Encoder model created with TensorFlow and stored in the "
@@ -65,7 +64,7 @@ Model = TF_MODELS[args.model]
 if args.scope is None:
     Model(arch, **vars(args))
 else:
-    tf.logging.info("Scoping the model in %s" % args.scope)
+    tf.logging.info("Scoping the model in `%s`" % args.scope)
     with tf.variable_scope(args.scope):
         Model(arch, **vars(args))
 
