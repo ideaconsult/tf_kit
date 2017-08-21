@@ -508,7 +508,7 @@ def tf_inference_run(sess, model, iterator, output_stream=None, output_fmt='%.8f
         def collect_fn(res, x):np.savetxt(output_stream, res, fmt=output_fmt)
 
     _tf_static_iteration(sess, iterator,
-                         ops=model.latent_var,
+                         ops=model.output_var,
                          input_op=model.input_var,
                          batch_size=model.batch_size,
                          result_idx=0,

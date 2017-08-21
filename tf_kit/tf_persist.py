@@ -152,7 +152,7 @@ def tf_restore_graph(model_path, input_pipe=None, from_scope=None):
 
     model = RestoredModel(input_pipe)
     trainables = tf.trainable_variables()
-    tf_logging.info("Done restoring:\n  "
+    tf_logging.info("Done restoring:\n"
                     "  ...trainable tensors = {:d}\n"
                     "  ...total parameters  = {:d}.".format(
         len(trainables),
