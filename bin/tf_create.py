@@ -16,8 +16,8 @@ from tf_kit.dt_constants import *
 from tf_kit.tf_persist import tf_export_graph
 
 argp = argparse.ArgumentParser(
-    description="A Variational Encoder model created with TensorFlow and stored in the "
-                "given location for further training / using."
+    description="A tool for creating models in TensorFlow, without running _any_ training, or even "
+                "initializing a session. Use `tf_train` for actual training."
 )
 
 model_list = [m for m in TF_MODELS.keys()]

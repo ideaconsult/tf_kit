@@ -126,7 +126,7 @@ if input_x is None and args.train is not None:
                                   allow_smaller_batch=True)
 
     tf_logging.info("Preparing the training data feed...")
-    hooks.append(FeedDataHook(model.input_var, iterator=input_x))
+    hooks.append(FeedDataHook(feed_op=model.input_var, iterator=input_x))
     tf_logging.info("... done.")
 
 if not args.quite:

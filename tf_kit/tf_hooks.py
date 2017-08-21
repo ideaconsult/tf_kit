@@ -6,7 +6,7 @@
 # Author: Ivan (Jonan) Georgiev
 #
 """
-The TensorFlow gears defines these classes:
+The TensorFlow hooks which are defined here:
 
 @@FeedDataHook
 @@TrainLogHook
@@ -20,42 +20,38 @@ from tensorflow.python.platform import tf_logging
 import numpy as np
 
 
-
 class FeedDataHook:
     """
     A MonitoredSession hook capable of providing data to the model's input variable.
     """
-    def __init__(self, feed_op, iterator, bridge_op=None, input_op=None, batch_size=None):
+    def __init__(self, iterator=None, input_op=None, batch_size=None, feed_op=None, feed_fn=None):
         """
         An implementation for reading data and feeding it to the given `feed_op`.
-        :param feed_op: The feed op to referenced.
         :param iterator: The iterator to be used for retrieving the data.
-        :param bridge_op: If passed the input is taken as the result of this op and
-                        the input_op is used to feed the data for it.
-        :param input_op: If provided the data is actually taken from here, or if
-                        `bridge_op` is passed - this is actually the input for
-                        the bridging architecture which produces the output.
+        :param input_op: If provided the data is actually taken from here.
+        :param batch_size: The size of the batches, if iterator is not provided to help.
+        :param feed_op: The feed op to referenced.
+        :param feed_fn: The pre-processing function of format (sess, input) -> {feed dict}
         """
         assert iterator is not None or input_op is not None
+        assert feed_op is not None or feed_fn is not None
+
         self._iterator = iterator
         self._input_op = input_op
-        self._bridge_op = bridge_op
-        self._batch_size = iterator.batch_size if iterator is not None else batch_size
+        self._feed_fn = feed_fn
         self._feed_op = feed_op
+        self._batch_size = iterator.batch_size if iterator is not None else batch_size
 
     def before_run(self, run_context):
-        x = None
-        if self._iterator is not None:
-            x = self._iterator.next()
-        elif self._bridge_op is not None:
-            x = run_context.session.run(self._bridge_op, feed_dict={self._input_op: x})
-        else:
-            x = run_context.session.run(self._input_op)
+        x = run_context.session.run(self._input_op) if self._iterator is None else self._iterator.next()
 
         if x.shape[0] < self._batch_size:
             padding = self._batch_size - x.shape[0]
             x = np.append(x, np.array([[.0] * x.shape[1]] * padding), axis=0)
-        return tf.train.SessionRunArgs(None, {self._feed_op: x})
+
+        return tf.train.SessionRunArgs(None,
+                                       {self._feed_op: x} if self._feed_fn is None
+                                       else self._feed_fn(run_context.session, x))
 
     def after_run(self, run_context, run_values):
         pass

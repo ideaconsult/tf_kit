@@ -34,6 +34,12 @@
 # Copyright (C) 2017, IDEAConsult Ltd.
 # Author: Ivan (Jonan) Georgiev
 #
+"""
+Providing this model class:
+
+@@VarAutoEncoder
+
+"""
 
 from tensorflow.python.platform import tf_logging
 from .tf_utils import *
@@ -73,7 +79,7 @@ class VarAutoEncoder():
         self.batch_size = batch_size
         self.learning_rate=learning_rate
         self.input_size = nn_layer_size(architecture[0])
-        self.latent_size = nn_layer_size(architecture[-1])
+        self.output_size = nn_layer_size(architecture[-1])
         self.architecture = architecture[1:-1]
         self.cost_function = cost_function
         self.data_format = 'N' + data_format.upper()
@@ -102,18 +108,19 @@ class VarAutoEncoder():
         Gaussian distribution in latent space.
         """
         self.z_mean, self.z_log_sigma_sq = self._recognition_network()
-        tf.add_to_collection("latents", self.z_mean)
+        tf.add_to_collection("outputs", self.z_mean)
 
         # Draw one sample z from Gaussian distribution
-        eps = tf.random_normal((self.batch_size, self.latent_size), 0, 1, dtype=tf.float32)
+        eps = tf.random_normal((self.batch_size, self.output_size), 0, 1, dtype=tf.float32)
         # z = mu + sigma*epsilon
         self.z_latent = tf.add(self.z_mean, tf.multiply(tf.sqrt(tf.exp(self.z_log_sigma_sq)), eps))
-        tf.add_to_collection("generators", self.z_latent)
+        tf.add_to_collection("latents", self.z_latent)
 
         # Use generator to determine mean of
         # Bernoulli distribution of reconstructed input
         self.x_decoded = self._generator_network()
-        tf.add_to_collection("outputs", self.x_decoded)
+        tf.add_to_collection("generators", self.x_decoded)
+        tf.add_to_collection("targets", tf.zeros([self.batch_size], dtype=tf.int32))
 
     def _recognition_network(self):
         """
@@ -121,20 +128,20 @@ class VarAutoEncoder():
         :return: A two-tensor tuple with `z_mean` and `z_log_sigma_sq`
         """
         last_input = tf_build_architecture(self.architecture,
-                                               batch_in=self.x_shaped,
-                                               scope_prefix="recognize",
-                                               data_format=self.data_format)
+                                           batch_in=self.x_shaped,
+                                           scope_prefix="recognize",
+                                           data_format=self.data_format)
 
         last_input = tf_ensure_flat(last_input)
 
         # The hidden layers are ready - now build the last two, first reshaping the last layer, if needed
         z_mean = tf_dense_layer("latent_mean", last_input,
-                                    params={ 'size':self.latent_size },
-                                    empty_func=True)
+                                params={ 'size':self.output_size },
+                                empty_func=True)
 
         z_log_sigma_sq = tf_dense_layer("latent_log_sigma_sq", last_input,
-                                            params= { 'size': self.latent_size },
-                                            empty_func=True)
+                                        params={ 'size': self.output_size },
+                                        empty_func=True)
         return z_mean, z_log_sigma_sq
 
     def _generator_network(self):
@@ -206,15 +213,19 @@ class VarAutoEncoder():
 
     @property
     def output_var(self):
-        return self.x_decoded
-
-    @property
-    def latent_var(self):
         return self.z_mean
 
     @property
-    def generator_var(self):
+    def latent_var(self):
         return self.z_latent
+
+    @property
+    def generator_var(self):
+        return self.x_decoded
+
+    @property
+    def target_var(self):
+        return None
 
 
 TF_MODELS['vae'] = VarAutoEncoder

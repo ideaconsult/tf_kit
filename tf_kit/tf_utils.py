@@ -361,6 +361,24 @@ def tf_ensure_flat(x, ndims=2):
     return tf.reshape(x, shape=new_shape)
 
 
+def tf_uninitialized_variables(return_op=False):
+    """
+    Returns a list of variables that are not, yet initialized. Can be directly passed
+    to tf.initialize_variables() to obtain the initialized op.
+    :param return_op: If passed it'll return the initialized op, or None, if the list is empty.
+    :return: Either a list of uninitialized variables (can be empty!) or directly the
+            op for initializing them.
+    """
+
+    uninitialized_list = [v for v in tf.all_variables() if not tf.is_variable_initialized(v)]
+    if not return_op:
+        return uninitialized_list
+    elif len(uninitialized_list) > 0:
+        return tf.variables_initializer(uninitialized_list)
+    else:
+        return None
+
+
 def tf_loss_function(name):
     """
     Returns the loss function from TF, based on the given name. Also, taking into account the

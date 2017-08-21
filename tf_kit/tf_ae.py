@@ -29,6 +29,12 @@
 # Copyright (C) 2017, IDEAConsult Ltd.
 # Author: Ivan (Jonan) Georgiev
 #
+"""
+Providing this model class:
+
+@@AutoEncoder
+
+"""
 
 from tensorflow.python.platform import tf_logging
 from .tf_utils import *
@@ -69,7 +75,7 @@ class AutoEncoder():
         self.batch_size = batch_size
         self.learning_rate=learning_rate
         self.input_size = nn_layer_size(architecture[0])
-        self.latent_size = nn_layer_size(architecture[-1])
+        self.output_size = nn_layer_size(architecture[-1])
         self.architecture = architecture[1:-1]
         self.cost_function = cost_function
         self.data_format = 'N' + data_format.upper()
@@ -97,13 +103,13 @@ class AutoEncoder():
     def _create_network(self):
         # Use recognition network to calculate the latent variables
         self.z_out = self._recognition_network()
-        tf.add_to_collection("latents", self.z_out)
+        tf.add_to_collection("outputs", self.z_out)
 
         # If we have noise_variance > 0, this means we're making a denoising auto-encoder,
         # meaning we have to induce some noise in the latent variables, before initiating the
         # reconstruction phase.
         if self.noise_variance > .0:
-            eps = tf.random_normal((self.batch_size, self.latent_size),
+            eps = tf.random_normal((self.batch_size, self.output_size),
                                    mean=.0,
                                    stddev=self.noise_variance,
                                    dtype=tf.float32)
@@ -111,24 +117,25 @@ class AutoEncoder():
         else:
             self.z_latent = self.z_out
 
-        tf.add_to_collection("generators", self.z_latent)
+        tf.add_to_collection("latents", self.z_latent)
 
         # Use generator to reconstruct the input back
         self.x_decoded = self._generator_network()
-        tf.add_to_collection("outputs", self.x_decoded)
+        tf.add_to_collection("generators", self.x_decoded)
+        tf.add_to_collection("targets", tf.zeros([self.batch_size], dtype=tf.int32))
 
     def _recognition_network(self):
         last_input = tf_build_architecture(self.architecture,
-                                               batch_in=self.x_shaped,
-                                               scope_prefix="recognize",
-                                               data_format=self.data_format)
+                                           batch_in=self.x_shaped,
+                                           scope_prefix="recognize",
+                                           data_format=self.data_format)
 
         last_input = tf_ensure_flat(last_input)
 
         # The hidden layers are ready - now build the latent variable one
         return tf_dense_layer("latent_z", last_input,
-                                  params={ 'size': self.latent_size },
-                                  empty_func=True)
+                              params={ 'size': self.output_size },
+                              empty_func=True)
 
     def _generator_network(self):
         final_layer = { 'func': self.final_func,
@@ -150,16 +157,16 @@ class AutoEncoder():
         else:
             reuse_dict = None
         rev_arch = tf_reverse_architecture(self.architecture,
-                                               final_layer=final_layer,
-                                               batch_size=self.batch_size)
+                                           final_layer=final_layer,
+                                           batch_size=self.batch_size)
 
         # In any case we need to invoke creating the reversed architecture
         last_input = tf_build_architecture(rev_arch,
-                                               batch_in=self.z_out,
-                                               scope_prefix="generate",
-                                               transpose=True,
-                                               data_format=self.data_format,
-                                               reuse_dict=reuse_dict)
+                                           batch_in=self.z_out,
+                                           scope_prefix="generate",
+                                           transpose=True,
+                                           data_format=self.data_format,
+                                           reuse_dict=reuse_dict)
 
         return tf_ensure_flat(last_input)
 
@@ -180,21 +187,25 @@ class AutoEncoder():
             tf.add_to_collection("train_ops", self.train_op)
             tf_logging.info("Added AdamOptimizer with learning rate: %.8f" % self.learning_rate)
 
-
     @property
     def input_var(self):
         return self.x_in
 
     @property
     def output_var(self):
-        return self.x_decoded
-
-    @property
-    def latent_var(self):
         return self.z_out
 
     @property
-    def generator_var(self):
+    def latent_var(self):
         return self.z_latent
+
+    @property
+    def generator_var(self):
+        return self.x_decoded
+
+    @property
+    def target_var(self):
+        return None
+
 
 TF_MODELS['ae'] = AutoEncoder
