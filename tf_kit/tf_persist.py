@@ -36,7 +36,7 @@ class RestoredModel:
         self.latent_var = latent_col[collection_idx] if collection_idx < len(latent_col) else None
 
         gen_col = tf.get_collection("generators")
-        self.generative_var = gen_col[collection_idx] if collection_idx < len(gen_col) else None
+        self.generator_var = gen_col[collection_idx] if collection_idx < len(gen_col) else None
 
         target_col = tf.get_collection("targets")
         self.target_var = target_col[collection_idx] if collection_idx < len(target_col) else None

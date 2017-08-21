@@ -63,6 +63,7 @@ class VarAutoEncoder():
                  batch_size=DEF_BATCH,
                  data_format=DEF_DATA_FORMAT,
                  cost_function=DEF_COST_FUNC,
+                 training_scope=None,
                  **kwargs):
 
         """
@@ -73,6 +74,8 @@ class VarAutoEncoder():
         :param batch_size: Size of mini-batches to be used.
         :param data_format: The data ordering format - `cwh` or `hwc`. Default is the later.
         :param cost_function: Cost function to be used: `xentropy` (default) or `mse`.
+        :param training_scope: If specified all variables are put into this scope and the optimizer is set
+                               to optimize only these variables.
         """
 
         # self.learning_rate = learning_rate
@@ -84,6 +87,7 @@ class VarAutoEncoder():
         self.cost_function = cost_function
         self.data_format = 'N' + data_format.upper()
         self.final_func = architecture[-1]['func'] if 'func' in architecture[-1] else tf.nn.sigmoid
+        self.training_scope = training_scope
 
         # Initialize, and possible reshape the input
         if input_pipe is not None:
@@ -130,6 +134,7 @@ class VarAutoEncoder():
         last_input = tf_build_architecture(self.architecture,
                                            batch_in=self.x_shaped,
                                            scope_prefix="recognize",
+                                           variables_collection=self.training_scope,
                                            data_format=self.data_format)
 
         last_input = tf_ensure_flat(last_input)
@@ -137,10 +142,12 @@ class VarAutoEncoder():
         # The hidden layers are ready - now build the last two, first reshaping the last layer, if needed
         z_mean = tf_dense_layer("latent_mean", last_input,
                                 params={ 'size':self.output_size },
+                                variables_collection=self.training_scope,
                                 empty_func=True)
 
         z_log_sigma_sq = tf_dense_layer("latent_log_sigma_sq", last_input,
                                         params={ 'size': self.output_size },
+                                        variables_collection=self.training_scope,
                                         empty_func=True)
         return z_mean, z_log_sigma_sq
 
@@ -161,6 +168,7 @@ class VarAutoEncoder():
                                            batch_in=self.z_latent,
                                            scope_prefix="generate",
                                            transpose=True,
+                                           variables_collection=self.training_scope,
                                            data_format=self.data_format)
 
         return tf_ensure_flat(last_input)
@@ -198,14 +206,17 @@ class VarAutoEncoder():
 
         if self.learning_rate is not None:
             global_step = tf.contrib.framework.get_or_create_global_step()
-            self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss_op,
-                                                                                              global_step=global_step)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(
+                self.loss_op,
+                global_step=global_step,
+                var_list=tf.get_collection(self.training_scope) if self.training_scope is not None else None)
+
             tf.add_to_collection("train_ops", self.train_op)
             tf_logging.info("Added AdamOptimizer with learning rate: %.8f" % self.learning_rate)
 
         tf.summary.scalar("latent_loss", tf.reduce_mean(latent_loss))
         tf.summary.scalar("reconstruction_loss", tf.reduce_mean(reconstr_loss))
-        tf.summary.scalar("loss", self.loss_op)
+        tf.summary.scalar("vae_loss", self.loss_op)
 
     @property
     def input_var(self):

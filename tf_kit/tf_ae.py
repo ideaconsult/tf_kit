@@ -57,6 +57,7 @@ class AutoEncoder():
                  batch_size=DEF_BATCH,
                  data_format=DEF_DATA_FORMAT,
                  cost_function=DEF_COST_FUNC,
+                 training_scope=None,
                  **kwargs):
 
         """
@@ -71,6 +72,8 @@ class AutoEncoder():
         :param batch_size: The size of the mini-batches.
         :param data_format: The data ordering format - `cwh` or `hwc`. Default is the later.
         :param cost_function: Cost function to be used: `xentropy` (default), `mse`, `abs`, `hinge` or `cos`.
+        :param training_scope: If specified all variables are put into this scope and the optimizer is set
+                               to optimize only these variables.
         """
         self.batch_size = batch_size
         self.learning_rate=learning_rate
@@ -82,6 +85,7 @@ class AutoEncoder():
         self.final_func = architecture[-1]['func'] if 'func' in architecture[-1] else tf.nn.sigmoid
         self.noise_variance = noise
         self.equal_weights = equal_weights
+        self.training_scope = training_scope
 
         # Initialize, and possible reshape the input
         if input_pipe is not None:
@@ -128,6 +132,7 @@ class AutoEncoder():
         last_input = tf_build_architecture(self.architecture,
                                            batch_in=self.x_shaped,
                                            scope_prefix="recognize",
+                                           variables_collection=self.training_scope,
                                            data_format=self.data_format)
 
         last_input = tf_ensure_flat(last_input)
@@ -135,6 +140,7 @@ class AutoEncoder():
         # The hidden layers are ready - now build the latent variable one
         return tf_dense_layer("latent_z", last_input,
                               params={ 'size': self.output_size },
+                              variables_collection=self.training_scope,
                               empty_func=True)
 
     def _generator_network(self):
@@ -162,10 +168,11 @@ class AutoEncoder():
 
         # In any case we need to invoke creating the reversed architecture
         last_input = tf_build_architecture(rev_arch,
-                                           batch_in=self.z_out,
+                                           batch_in=self.z_latent,
                                            scope_prefix="generate",
                                            transpose=True,
                                            data_format=self.data_format,
+                                           variables_collection=self.training_scope,
                                            reuse_dict=reuse_dict)
 
         return tf_ensure_flat(last_input)
@@ -178,12 +185,14 @@ class AutoEncoder():
         self.loss_op = loss_fn(self.x_in, self.x_decoded)
 
         tf.add_to_collection("losses", self.loss_op)
-        tf.summary.scalar("loss", self.loss_op)
+        tf.summary.scalar("ae_loss", self.loss_op)
 
         if self.learning_rate is not None:
             global_step = tf.contrib.framework.get_or_create_global_step()
-            self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss_op,
-                                                                                              global_step=global_step)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(
+                self.loss_op,
+                global_step=global_step,
+                var_list=tf.get_collection(self.training_scope) if self.training_scope is not None else None)
             tf.add_to_collection("train_ops", self.train_op)
             tf_logging.info("Added AdamOptimizer with learning rate: %.8f" % self.learning_rate)
 

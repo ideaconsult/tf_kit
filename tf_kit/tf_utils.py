@@ -134,13 +134,14 @@ def tf_prepare_pipe(file_list, data_format,
     return data
 
 
-def tf_get_reuse_variable(name, shape, initializer=None, reuse_dict=None):
+def tf_get_reuse_variable(name, shape, initializer=None, reuse_dict=None, variables_collection=None):
     """
     Tries to find a variable with `name` in the current variable scope, if not - makes a new one.
     :param name: The name of the variable to be created / reused.
     :param shape: The shape of newly created variable.
     :param initializer: The initializer to be used for the variable creation.
-    :param reuse_dict: The disctionary of reusable variable to search into.
+    :param reuse_dict: The dictionary of reusable variable to search into.
+    :param variables_collection: A collection of variables to add it to.
     :return: A tensor with either a newly crated variable or reused one.
     """
     scope = tf.get_variable_scope().name
@@ -148,10 +149,13 @@ def tf_get_reuse_variable(name, shape, initializer=None, reuse_dict=None):
         rvar = reuse_dict[scope + '/' + name]
         return tf.reshape(rvar, shape=shape) if rvar.get_shape() != shape else rvar
     else:
-        return tf.get_variable(name, shape=shape, initializer=initializer)
+        var = tf.get_variable(name, shape=shape, initializer=initializer)
+        if variables_collection is not None:
+            tf.add_to_collection(variables_collection, var)
+        return var
 
 
-def tf_dense_layer(scope, x, params, empty_func=False, reuse_dict=None):
+def tf_dense_layer(scope, x, params, empty_func=False, variables_collection=None, reuse_dict=None):
     """
     Creates a dense layer, that have weights from all elements
     from the given input `x`, according to the parameters dictionary passed.
@@ -164,6 +168,7 @@ def tf_dense_layer(scope, x, params, empty_func=False, reuse_dict=None):
     :param x: The input tensor. Can have it's first dimension unspecified
     :param params: The params dictionary. See above.
     :param empty_func: Whether the non-linearity function should be skipped.
+    :param variables_collection: A collection to add the variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
     :return: A tuple (tensor resulting from the dense layer construction, list of model variables)
     """
@@ -176,16 +181,25 @@ def tf_dense_layer(scope, x, params, empty_func=False, reuse_dict=None):
 
     with tf.variable_scope(scope):
         weights = tf_get_reuse_variable("weights", [in_size, the_size],
-                                        initializer=initializer, reuse_dict=reuse_dict)
+                                        initializer=initializer,
+                                        reuse_dict=reuse_dict,
+                                        variables_collection=variables_collection)
         biases = tf_get_reuse_variable("biases", [the_size],
-                                       initializer=tf.constant_initializer(.0), reuse_dict=reuse_dict)
+                                       initializer=tf.constant_initializer(.0),
+                                       reuse_dict=reuse_dict,
+                                       variables_collection=variables_collection)
 
     layer = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func and func else \
         func(tf.add(tf.matmul(x, weights), biases), name=scope)
     return layer
 
 
-def tf_conv_layer(scope, x, params, transpose=False, empty_func=False, data_format="NHWC", reuse_dict=None):
+def tf_conv_layer(scope, x, params,
+                  transpose=False,
+                  empty_func=False,
+                  data_format="NHWC",
+                  variables_collection=None,
+                  reuse_dict=None):
     """
     Creates a convolution layer, operating on the given input `x` and constructed, based
     on the information from the given `params`. The dictionary can have the following
@@ -206,6 +220,7 @@ def tf_conv_layer(scope, x, params, transpose=False, empty_func=False, data_form
     :param transpose: Whether a transposed convolution should be constructed. Default is False.
     :param empty_func: Whether to skip non-linearity transformation. Default is False.
     :param data_format: The ordering of data to be expected from the input tensor.
+    :param variables_collection: A collection to add the variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
     :return: A tuple (tensor resulting from the layer construction, list of model variables)
     """
@@ -239,9 +254,13 @@ def tf_conv_layer(scope, x, params, transpose=False, empty_func=False, data_form
 
     with tf.variable_scope(scope):
         weights = tf_get_reuse_variable("weights", shape=w_shape,
-                                        initializer=initializer, reuse_dict=reuse_dict)
+                                        initializer=initializer,
+                                        reuse_dict=reuse_dict,
+                                        variables_collection=variables_collection)
         biases = tf_get_reuse_variable("biases", shape=[filters],
-                                       initializer=tf.constant_initializer(.0), reuse_dict=reuse_dict)
+                                       initializer=tf.constant_initializer(.0),
+                                       reuse_dict=reuse_dict,
+                                       variables_collection=variables_collection)
 
         conv = tf.nn.conv2d(x, weights,
                             strides=strides,
@@ -256,7 +275,12 @@ def tf_conv_layer(scope, x, params, transpose=False, empty_func=False, data_form
     return tf.add(conv, biases, name=scope) if empty_func else func(tf.add(conv, biases), name=scope)
 
 
-def tf_build_architecture(architecture, batch_in, scope_prefix, transpose=False, data_format="NHWC", reuse_dict=None):
+def tf_build_architecture(architecture, batch_in,
+                          scope_prefix,
+                          transpose=False,
+                          data_format="NHWC",
+                          variables_collection=None,
+                          reuse_dict=None):
     """
     Build the given architecture, invoking the appropriate of the above functions.
     :param architecture: The list of dictionaries describing each layer. The `type` determines which of the above
@@ -265,6 +289,7 @@ def tf_build_architecture(architecture, batch_in, scope_prefix, transpose=False,
     :param scope_prefix: The prefix for the variables scope which will be used.
     :param transpose: Whether to transpose the convolution layers.
     :param data_format: The ordering of data to be expected from the input tensor.
+    :param variables_collection: A collection to add variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
     :return: A tuple (tensor resulting from the architecture construction, list of model variables)
     """
@@ -281,6 +306,7 @@ def tf_build_architecture(architecture, batch_in, scope_prefix, transpose=False,
             last_input = tf_dense_layer(scope,
                                         last_input,
                                         params,
+                                        variables_collection=variables_collection,
                                         reuse_dict=reuse_dict)
         elif ltype == "conv":
             last_input = tf_conv_layer(scope,
@@ -288,6 +314,7 @@ def tf_build_architecture(architecture, batch_in, scope_prefix, transpose=False,
                                        params,
                                        reuse_dict=reuse_dict,
                                        transpose=transpose,
+                                       variables_collection=variables_collection,
                                        data_format=data_format)
         else:
             assert False
