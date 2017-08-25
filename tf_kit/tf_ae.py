@@ -188,7 +188,7 @@ class AutoEncoder():
         tf.summary.scalar("ae_loss", self.loss_op)
 
         if self.learning_rate is not None:
-            global_step = tf.contrib.framework.get_or_create_global_step()
+            global_step = tf.train.get_or_create_global_step()
             self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(
                 self.loss_op,
                 global_step=global_step,

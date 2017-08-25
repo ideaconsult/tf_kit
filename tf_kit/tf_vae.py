@@ -205,7 +205,7 @@ class VarAutoEncoder():
         tf.add_to_collection("losses", self.loss_op)
 
         if self.learning_rate is not None:
-            global_step = tf.contrib.framework.get_or_create_global_step()
+            global_step = tf.train.get_or_create_global_step()
             self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(
                 self.loss_op,
                 global_step=global_step,
@@ -225,6 +225,10 @@ class VarAutoEncoder():
     @property
     def output_var(self):
         return self.z_mean
+
+    @property
+    def output_deviation(self):
+        return self.z_log_sigma_sq
 
     @property
     def latent_var(self):
