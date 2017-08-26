@@ -275,7 +275,8 @@ def tf_conv_layer(scope, x, params,
     return tf.add(conv, biases, name=scope) if empty_func else func(tf.add(conv, biases), name=scope)
 
 
-def tf_build_architecture(architecture, batch_in,
+def tf_build_architecture(architecture,
+                          batch_in,
                           scope_prefix,
                           transpose=False,
                           data_format="NHWC",
@@ -296,7 +297,7 @@ def tf_build_architecture(architecture, batch_in,
     last_input = batch_in
 
     for idx, params in enumerate(architecture, start=1):
-        scope = scope_prefix + "_%d" % idx
+        scope = params['name'] if 'name' in params else scope_prefix + "_%d" % idx
 
         if not 'input_shape' in params:
             params["input_shape"] = last_input.get_shape().as_list()
@@ -422,7 +423,7 @@ def tf_loss_function(name):
         return loss_base.mean_squared_error
     elif name in ('xentropy', 'log'):
         return loss_base.log_loss
-    elif name in ('softmax'):
+    elif name == 'softmax':
         return loss_base.softmax_cross_entropy
     elif name == "hinge":
         return loss_base.hinge_loss
