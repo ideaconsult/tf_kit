@@ -7,6 +7,7 @@
 
 import tensorflow as tf
 import numpy as np
+import re
 
 # The dictionary used during normal architecture
 TF_FUNC_DICT = { 'relu': tf.nn.relu,
@@ -189,7 +190,7 @@ def tf_dense_layer(scope, x, params, empty_func=False, variables_collection=None
                                        reuse_dict=reuse_dict,
                                        variables_collection=variables_collection)
 
-    layer = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func and func else \
+    layer = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func or not func else \
         func(tf.add(tf.matmul(x, weights), biases), name=scope)
     return layer
 
@@ -272,7 +273,8 @@ def tf_conv_layer(scope, x, params,
                                    padding=padding,
                                    data_format=data_format)
 
-    return tf.add(conv, biases, name=scope) if empty_func else func(tf.add(conv, biases), name=scope)
+    return tf.add(conv, biases, name=scope) if empty_func or not func \
+        else func(tf.add(conv, biases), name=scope)
 
 
 def tf_build_architecture(architecture,
@@ -295,9 +297,15 @@ def tf_build_architecture(architecture,
     :return: A tuple (tensor resulting from the architecture construction, list of model variables)
     """
     last_input = batch_in
+    arch_len = len(architecture)
 
     for idx, params in enumerate(architecture, start=1):
-        scope = params['name'] if 'name' in params else scope_prefix + "_%d" % idx
+        if 'name' in params:
+            scope = params['name']
+        elif transpose:
+            scope = scope_prefix + "_%d" % (arch_len - idx + 1)
+        else:
+            scope = scope_prefix + "_%d" % idx
 
         if not 'input_shape' in params:
             params["input_shape"] = last_input.get_shape().as_list()
@@ -339,6 +347,28 @@ def tf_build_reverse_params(layer, params):
         layer['input_shape'], layer['output_shape'] = layer['output_shape'], layer['input_shape']
 
     return layer
+
+
+def tf_build_reuse_dict(vars, transpose=True):
+    """
+    Build a dictionary which can be used in tf_build_architecture() when
+    reusing a variables is required.
+    :param vars: The set of variables to be searched within.
+    :param transpose: If the variables need to be transposed
+    :return: A dictionary between a variable name and the tensor to be reused.
+    """
+    reuse_dict = dict()
+    for var in vars:
+        var_m = re.search('recognize_([0-9]+)/(weights)', var.name)
+        if var_m is not None:
+            var_name = 'generate_%d/%s' % (int(var_m.group(1)), var_m.group(2))
+            if transpose:
+                shape_perm = [i for i in range(var.get_shape().ndims)]
+                shape_perm[-2], shape_perm[-1] = shape_perm[-1], shape_perm[-2]
+                reuse_dict[var_name] = tf.transpose(var, perm=shape_perm)
+            else:
+                reuse_dict[var_name] = var
+    return reuse_dict
 
 
 def tf_reverse_architecture(architecture, final_layer, batch_size=None):

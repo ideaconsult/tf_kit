@@ -150,18 +150,7 @@ class AutoEncoder():
                         }
 
         # Now prepare the reuse dictionary for weights sharing
-        if self.equal_weights:
-            reuse_dict = dict()
-            arch_len = len(self.architecture)
-            for var in tf.trainable_variables():
-                var_m = re.search('recognize_([0-9]+)/weights', var.name)
-                if var_m is not None:
-                    shape_perm = [i for i in range(var.get_shape().ndims)]
-                    shape_perm[-2], shape_perm[-1] = shape_perm[-1], shape_perm[-2]
-                    var_name = 'generate_%d/weights' % (arch_len - int(var_m.group(1)) + 2)
-                    reuse_dict[var_name] = tf.transpose(var, perm=shape_perm)
-        else:
-            reuse_dict = None
+        reuse_dict = tf_build_reuse_dict(tf.trainable_variables()) if self.equal_weights else None
         rev_arch = tf_reverse_architecture(self.architecture,
                                            final_layer=final_layer,
                                            batch_size=self.batch_size)
@@ -209,7 +198,7 @@ class AutoEncoder():
         return self.z_latent
 
     @property
-    def generator_var(self):
+    def generator_out(self):
         return self.x_decoded
 
     @property

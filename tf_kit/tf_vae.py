@@ -60,6 +60,7 @@ class VarAutoEncoder():
                  architecture,
                  input_pipe=None,
                  learning_rate=None,
+                 equal_weights=False,
                  batch_size=DEF_BATCH,
                  data_format=DEF_DATA_FORMAT,
                  cost_function=DEF_COST_FUNC,
@@ -71,6 +72,7 @@ class VarAutoEncoder():
         :param architecture: The architecture as returned from `nn_utils.nn_parse_architecture`.
         :param input_pipe: If provided, this will be the data used for training.
         :param learning_rate: If specified, the learning rate to be used with AdamOptimizer, which will be added.
+        :param equal_weights: Whether to use same weights in both sides of the auto-encoder.
         :param batch_size: Size of mini-batches to be used.
         :param data_format: The data ordering format - `cwh` or `hwc`. Default is the later.
         :param cost_function: Cost function to be used: `xentropy` (default) or `mse`.
@@ -81,6 +83,7 @@ class VarAutoEncoder():
         # self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.learning_rate=learning_rate
+        self.equal_weights = equal_weights
         self.input_size = nn_layer_size(architecture[0])
         self.output_size = nn_layer_size(architecture[-1])
         self.architecture = architecture[1:-1]
@@ -162,12 +165,14 @@ class VarAutoEncoder():
                         }
 
         rev_arch = tf_reverse_architecture(self.architecture, final_layer=final_layer, batch_size=self.batch_size)
+        reuse_dict = tf_build_reuse_dict(tf.trainable_variables()) if self.equal_weights else None
 
         # In any case we need to invoke creating the reversed architecture
         last_input = tf_build_architecture(rev_arch,
                                            batch_in=self.z_latent,
                                            scope_prefix="generate",
                                            transpose=True,
+                                           reuse_dict=reuse_dict,
                                            variables_collection=self.training_scope,
                                            data_format=self.data_format)
 
@@ -235,7 +240,7 @@ class VarAutoEncoder():
         return self.z_latent
 
     @property
-    def generator_var(self):
+    def generator_out(self):
         return self.x_decoded
 
     @property

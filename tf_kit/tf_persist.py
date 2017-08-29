@@ -33,10 +33,10 @@ class RestoredModel:
         self.output_var = tf.get_collection("outputs")[collection_idx]
 
         latent_col = tf.get_collection("latents")
-        self.latent_var = latent_col[collection_idx] if collection_idx < len(latent_col) else None
+        self.latent_var = latent_col[-1] if collection_idx < len(latent_col) else None
 
         gen_col = tf.get_collection("generators")
-        self.generator_var = gen_col[collection_idx] if collection_idx < len(gen_col) else None
+        self.generator_out = gen_col[collection_idx] if collection_idx < len(gen_col) else None
 
         target_col = tf.get_collection("targets")
         self.target_var = target_col[collection_idx] if collection_idx < len(target_col) else None
@@ -82,7 +82,7 @@ class WrappedModel:
         tf.add_to_collection("targets", y_target if y_target is not None else tf.zeros([self.batch_size], dtype=tf.int32))
         self.latent_var = latent_in
         tf.add_to_collection("latents", latent_in if latent_in is not None else tf.zeros(out_shape))
-        self.generator_var = generative_out
+        self.generator_out = generative_out
         tf.add_to_collection("generators", generative_out if generative_out is not None else tf.zeros(in_shape))
 
         tf.add_to_collection("train_ops", train_op)
