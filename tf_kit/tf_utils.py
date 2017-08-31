@@ -156,7 +156,11 @@ def tf_get_reuse_variable(name, shape, initializer=None, reuse_dict=None, variab
         return var
 
 
-def tf_dense_layer(scope, x, params, empty_func=False, variables_collection=None, reuse_dict=None):
+def tf_dense_layer(scope, x, params,
+                   empty_func=False,
+                   variables_collection=None,
+                   reuse_dict=None,
+                   dropout_keeprate=None):
     """
     Creates a dense layer, that have weights from all elements
     from the given input `x`, according to the parameters dictionary passed.
@@ -171,6 +175,7 @@ def tf_dense_layer(scope, x, params, empty_func=False, variables_collection=None
     :param empty_func: Whether the non-linearity function should be skipped.
     :param variables_collection: A collection to add the variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
+    :param dropout_keeprate: If dropout is taking place - this is the tensor to be used.
     :return: A tuple (tensor resulting from the dense layer construction, list of model variables)
     """
 
@@ -178,6 +183,7 @@ def tf_dense_layer(scope, x, params, empty_func=False, variables_collection=None
     in_size = int(x.get_shape()[1])
     the_size = params["size"]
     func = params.get("func", tf.nn.relu)
+    dropout = params.get('dropout', False)
     initializer = params.get("initializer", tf.contrib.layers.xavier_initializer(False))
 
     with tf.variable_scope(scope):
@@ -190,9 +196,9 @@ def tf_dense_layer(scope, x, params, empty_func=False, variables_collection=None
                                        reuse_dict=reuse_dict,
                                        variables_collection=variables_collection)
 
-    layer = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func or not func else \
+    output = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func or not func else \
         func(tf.add(tf.matmul(x, weights), biases), name=scope)
-    return layer
+    return tf.nn.dropout(output, keep_prob=dropout_keeprate) if dropout and dropout_keeprate is not None else output
 
 
 def tf_conv_layer(scope, x, params,
@@ -200,7 +206,8 @@ def tf_conv_layer(scope, x, params,
                   empty_func=False,
                   data_format="NHWC",
                   variables_collection=None,
-                  reuse_dict=None):
+                  reuse_dict=None,
+                  dropout_keeprate=None):
     """
     Creates a convolution layer, operating on the given input `x` and constructed, based
     on the information from the given `params`. The dictionary can have the following
@@ -223,12 +230,14 @@ def tf_conv_layer(scope, x, params,
     :param data_format: The ordering of data to be expected from the input tensor.
     :param variables_collection: A collection to add the variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
+    :param dropout_keeprate: If dropout is taking place - this is the tensor to be used.
     :return: A tuple (tensor resulting from the layer construction, list of model variables)
     """
 
     in_shape = params.get('input_shape', None)
     out_shape = params.get('output_shape', None)
     transpose = transpose or params.get('transpose', False)
+    dropout = params.get('dropout', False)
 
     x_shape = x.get_shape()
     if in_shape is None or out_shape is None:
@@ -273,8 +282,9 @@ def tf_conv_layer(scope, x, params,
                                    padding=padding,
                                    data_format=data_format)
 
-    return tf.add(conv, biases, name=scope) if empty_func or not func \
+    output = tf.add(conv, biases, name=scope) if empty_func or not func \
         else func(tf.add(conv, biases), name=scope)
+    return tf.nn.dropout(output, keep_prob=dropout_keeprate) if dropout and dropout_keeprate is not None else output
 
 
 def tf_build_architecture(architecture,
@@ -283,7 +293,8 @@ def tf_build_architecture(architecture,
                           transpose=False,
                           data_format="NHWC",
                           variables_collection=None,
-                          reuse_dict=None):
+                          reuse_dict=None,
+                          dropout_keeprate=None):
     """
     Build the given architecture, invoking the appropriate of the above functions.
     :param architecture: The list of dictionaries describing each layer. The `type` determines which of the above
@@ -294,6 +305,7 @@ def tf_build_architecture(architecture,
     :param data_format: The ordering of data to be expected from the input tensor.
     :param variables_collection: A collection to add variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
+    :param dropout_keeprate: If dropout is taking place - this is the tensor to be used.
     :return: A tuple (tensor resulting from the architecture construction, list of model variables)
     """
     last_input = batch_in
@@ -316,7 +328,8 @@ def tf_build_architecture(architecture,
                                         last_input,
                                         params,
                                         variables_collection=variables_collection,
-                                        reuse_dict=reuse_dict)
+                                        reuse_dict=reuse_dict,
+                                        dropout_keeprate=dropout_keeprate)
         elif ltype == "conv":
             last_input = tf_conv_layer(scope,
                                        last_input,
@@ -324,6 +337,7 @@ def tf_build_architecture(architecture,
                                        reuse_dict=reuse_dict,
                                        transpose=transpose,
                                        variables_collection=variables_collection,
+                                       dropout_keeprate=dropout_keeprate,
                                        data_format=data_format)
         else:
             assert False
@@ -463,7 +477,7 @@ def tf_loss_function(name):
         raise ValueError(name, "Unknown cost function name!")
 
 
-def _tf_static_iteration(sess, iterator, ops, input_op, batch_size, result_idx=None, iter_fn=None):
+def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, result_idx=None, iter_fn=None):
     def _make_step(x):
         if x.shape[0] < batch_size:
             padding = batch_size - x.shape[0]
@@ -471,7 +485,8 @@ def _tf_static_iteration(sess, iterator, ops, input_op, batch_size, result_idx=N
         else:
             padding = 0
 
-        result = sess.run(ops, feed_dict={input_op: x})
+        feeds[input_op] = x
+        result = sess.run(ops, feed_dict=feeds)
 
         if result_idx is not None and padding > 0:
             if isinstance(ops, tuple) or isinstance(ops, list):
@@ -479,6 +494,9 @@ def _tf_static_iteration(sess, iterator, ops, input_op, batch_size, result_idx=N
             else:
                 result = result[:batch_size - padding]
         iter_fn(result, x)
+
+    if feeds is None:
+        feeds = dict()
 
     if isinstance(iterator, (list, np.ndarray)):
         _make_step(iterator)
@@ -505,72 +523,11 @@ def tf_validation_run(sess, model, iterator):
             stat["loss"] += res
             stat["count"] += 1
 
-    _tf_static_iteration(sess, iterator,
-                         ops=model.loss_op,
-                         input_op=model.input_var,
-                         batch_size=model.batch_size,
-                         result_idx=None,
-                         iter_fn=lambda res, x:_accumulate(loss_stat, res, x))
+    tf_static_iteration(sess, iterator,
+                        ops=model.loss_op,
+                        input_op=model.input_var,
+                        batch_size=model.batch_size,
+                        result_idx=None,
+                        iter_fn=lambda res, x:_accumulate(loss_stat, res, x))
 
     return loss_stat["loss"] / loss_stat["count"]
-
-
-def tf_generative_run(sess, model, iterator, output_stream=None, output_fmt='%.8f'):
-    """
-
-    :param sess:
-    :param model:
-    :param iterator:
-    :param output_stream:
-    :param output_fmt:
-    :return:
-    """
-
-    if output_stream is None:
-        out_data = []
-
-        def collect_fn(res, x):out_data.extend(res)
-    else:
-        out_data = None
-
-        def collect_fn(res, x):np.savetxt(output_stream, res, fmt=output_fmt)
-
-    _tf_static_iteration(sess, iterator,
-                         ops=model.output_var,
-                         input_op=model.generative_var,
-                         batch_size=model.batch_size,
-                         result_idx=0,
-                         iter_fn=collect_fn)
-
-    return None if out_data is None else np.array(out_data)
-
-
-def tf_inference_run(sess, model, iterator, output_stream=None, output_fmt='%.8f'):
-    """
-
-    :param sess:
-    :param model:
-    :param iterator:
-    :param output_stream:
-    :param output_fmt:
-    :return:
-    """
-
-    if output_stream is None:
-        out_data = []
-
-        def collect_fn(res, x):out_data.extend(res)
-    else:
-        out_data = None
-
-        def collect_fn(res, x):np.savetxt(output_stream, res, fmt=output_fmt)
-
-    _tf_static_iteration(sess, iterator,
-                         ops=model.output_var,
-                         input_op=model.input_var,
-                         batch_size=model.batch_size,
-                         result_idx=0,
-                         iter_fn=collect_fn)
-
-    return None if out_data is None else np.array(out_data)
-

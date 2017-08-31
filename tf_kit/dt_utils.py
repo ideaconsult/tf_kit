@@ -7,8 +7,10 @@
 
 import numpy as np
 import random as rnd
+import os
 from .nn_utils import packed_images_reader
 from .dt_constants import *
+
 
 
 class ArrayBatchIter:
@@ -86,6 +88,7 @@ class FileBatchIter:
     """CSV file batch retrieval tool"""
     def __init__(self, filenames,
                  delimiter=None,
+                 skip_rows=0,
                  batch_size=100,
                  allow_smaller_batch=False,
                  num_epochs=None,
@@ -93,8 +96,9 @@ class FileBatchIter:
                  shuffle_factor=5):
         """
 
-        :param filename:
+        :param filenames:
         :param delimiter:
+        :param skip_rows:
         :param batch_size:
         :param allow_smaller_batch:
         :param num_epochs:
@@ -105,6 +109,7 @@ class FileBatchIter:
         self._num_epochs = num_epochs if num_epochs is not None else MAX_EPOCHS
         self._batch_size = batch_size
         self._delimiter = delimiter
+        self._skip_rows = skip_rows
         self._load_size = self._batch_size if not shuffle else self._batch_size * shuffle_factor
         self._shuffle = shuffle
         self._allow_smaller = allow_smaller_batch
@@ -114,7 +119,7 @@ class FileBatchIter:
         if self._shuffle:
             rnd.shuffle(self._files)
         self._current = 0
-        self._fh = open(self._files[0], "rt")
+        self._prepare_file()
         self._epoch = 0
         self._idx = 0
         self._prefetched = None
@@ -134,8 +139,13 @@ class FileBatchIter:
             self._fh.seek(0)
         else:
             self._fh.close()
-            self._fh = open(self._files[self._current], "rt")
+            self._prepare_file()
         return True
+
+    def _prepare_file(self):
+        self._fh = open(self._files[self._current], "rt")
+        for i in range(self._skip_rows):
+            self._fh.readline()
 
     def _get_lines(self, max_lines=None):
         batch = []
@@ -193,48 +203,69 @@ class FileBatchIter:
         return self._batch_size
 
 
-def dt_prepare_iterator(datas,
-                        data_format=DT_FORMAT_FILE,
+def dt_delimiter_from_ext(f_ext):
+    if f_ext == ".txt":
+        return ' '
+    elif f_ext == ".csv":
+        return ','
+    elif f_ext == ".tsv":
+        return ","
+    else:
+        return None
+
+
+def dt_prepare_iterator(filename,
                         delimiter=None,
+                        skip_rows=0,
                         batch_size=100,
                         shuffle=False,
                         num_epochs=None,
                         allow_smaller_batch=False):
     """
     Prepare a data batch iterator which can be used in various places...
-    :param datas: The list of files to be used, or the np.array.
-    :param data_format: The given format - one of DT_* constants.
+    :param filename: The list of files to be used, or the np.array.
+    :param in_memory: Whether to try to load everything into the memory.
     :param delimiter: The file delimiter if that is the case.
+    :param skip_rows: How many lines to skip, in the case of file format.
     :param batch_size: The batch size to be used.
     :param shuffle: Whether to shuffle - both filenames and the data.
     :param num_epochs: Number of epochs to iterate over the files.
     :param allow_smaller_batch: Whether the last batch can be smaller.
     :return: An iterator.
     """
-    if datas is None:
+    if filename is None:
         return None
-    elif data_format == DT_FORMAT_IMAGE:
-        img_data, num, w, h = packed_images_reader(datas[0])
+    _, f_ext = os.path.splitext(filename)
+
+    if f_ext == ".npy":
+        return ArrayBatchIter(np.load(filename),
+                              batch_size=batch_size,
+                              allow_smaller_batch=allow_smaller_batch,
+                              num_epochs=num_epochs,
+                              shuffle=shuffle)
+    elif f_ext == ".gz":
+        img_data, num, w, h = packed_images_reader(filename)
         return ArrayBatchIter(np.reshape(img_data, newshape=[num, w * h]),
                               batch_size=batch_size,
                               allow_smaller_batch=allow_smaller_batch,
                               num_epochs=num_epochs,
                               shuffle=shuffle)
-    elif data_format == DT_FORMAT_MEM:
-        return ArrayBatchIter(np.loadtxt(datas[0], delimiter=delimiter),
+    elif os.path.getsize(filename) < DEF_MAX_MEMORY_SIZE:
+        if delimiter is None:
+            delimiter = dt_delimiter_from_ext(f_ext)
+        return ArrayBatchIter(np.loadtxt(filename, delimiter=delimiter, skiprows=skip_rows),
                               batch_size=batch_size,
                               allow_smaller_batch=allow_smaller_batch,
                               num_epochs=num_epochs,
                               shuffle=shuffle)
-    elif data_format == DT_FORMAT_FILE:
-        return FileBatchIter(datas,
+    else:
+        return FileBatchIter(filename,
                              delimiter=delimiter,
+                             skip_rows=skip_rows,
                              batch_size=batch_size,
                              allow_smaller_batch=allow_smaller_batch,
                              num_epochs=num_epochs,
                              shuffle=shuffle)
-    else:
-        return None
 
 
 if __name__ == '__main__':

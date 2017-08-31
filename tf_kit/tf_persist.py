@@ -16,6 +16,7 @@ import tensorflow as tf
 from tensorflow.python.platform import tf_logging
 from .tf_utils import tf_tensors_size
 import os
+import re
 
 META_GRAPH_BASE = "model.ckpt"
 GRAPH_FILENAME = "graph.pb"
@@ -118,12 +119,13 @@ def tf_export_graph(model_path, use_meta_graph=True):
     )
 
 
-def tf_restore_graph(model_path, input_pipe=None, from_scope=None):
+def tf_restore_graph(model_path, input_pipe=None, from_scope=None, checkpoint_idx=None):
     """
     Loads the saved graph and restores the model and the trained variables from given path.
     :param model_path: The path to the saved model to restore from.
     :param input_pipe: The new input_pipe for the model, if needed.
     :param from_scope: Search for specific ops inside this scope.
+    :param checkpoint_idx: The exact number of checkpoint to be used for restoring.
     :return: The RestoredModel instance.
     """
 
@@ -132,9 +134,10 @@ def tf_restore_graph(model_path, input_pipe=None, from_scope=None):
         # We're dealing with graph_def
         tf_logging.info("Restoring from graph from `%s`..." % model_path)
     else:
-        # TODO: Take into account the passed checkpoint number here, modifying checkpoint_path!
+        if checkpoint_idx is not None:
+            checkpoint_path = re.sub(r"\d+$", str(checkpoint_idx), checkpoint_path)
         model_path = checkpoint_path + META_EXT
-        tf_logging.info("Restoring from checkpoint from `%s`..." % checkpoint_path)
+        tf_logging.info("Restoring from checkpoint at `%s`..." % checkpoint_path)
 
     # Since each time we provide different input, we must initialize new saver, so it can take care for
     # the newly added variables, thus - we have different scenarios for both graph restorations.
