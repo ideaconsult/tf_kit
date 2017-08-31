@@ -10,6 +10,7 @@ The TensorFlow hooks which are defined here:
 
 @@FeedDataHook
 @@TrainLogHook
+@@ProbabilisticOpsHook
 @@ValidationHook
 
 """
@@ -127,6 +128,47 @@ class TrainLogHook:
         pass
 
 
+class ProbabilisticOpsHook:
+    def __init__(self, ops, initial_probs, ensure_non_empty=False, exclusive=False):
+        """
+
+        :param models: A list of models to balance training to.
+        :param initial_probs: The initial probabilities for each op.
+        :param ensure_non_empty: Make sure at least one is executed.
+        :param exclusive: Allow only one train op to be executed
+        """
+        self._ops = ops
+        self.probabilities = initial_probs
+        self._non_empty = ensure_non_empty
+        self._exclusive = exclusive
+
+    def before_run(self, run_context):
+        fetches = []
+        prob = np.random.random()
+        for i in range(len(self._ops)):
+            if self.probabilities[i] > prob:
+                fetches.append(self._ops[i])
+                if self._exclusive:
+                    break
+
+        # Ensure at least one - the most probable.
+        if not fetches and self._non_empty:
+            fetches.append(self._ops[np.argmax(self.probabilities)])
+        return tf.train.SessionRunArgs(fetches)
+
+    def after_run(self, run_context, run_values):
+        pass
+
+    def begin(self):
+        pass
+
+    def end(self, session):
+        pass
+
+    def after_create_session(self, sess, coord):
+        pass
+
+
 class ValidationHook:
     def __init__(self, model,
                  data_iterator,
@@ -148,6 +190,7 @@ class ValidationHook:
         self._early_stopping_rounds = early_stopping_rounds
         self._report_fn = report_fn
         self._last_round = 0
+        self._last_loss = np.nan
         self._counter = 0
         self._best_rounds = 0
         self._best_loss = None
@@ -165,19 +208,19 @@ class ValidationHook:
             return None
 
         self._last_round = self._counter
-        loss = self._run_validation(run_context.session)
-        if self._best_loss is None or loss < self._best_loss:
-            self._best_loss = loss
+        self._last_loss = self._run_validation(run_context.session)
+        if self._best_loss is None or self._last_loss < self._best_loss:
+            self._best_loss = self._last_loss
             self._best_rounds = 0
             self._best_step = self._counter
         else:
             self._best_rounds += 1
 
         if self._report_fn is not None:
-            self._report_fn(self._counter, loss)
+            self._report_fn(self._counter, self._last_loss)
 
         if self._early_stopping_rounds is not None and self._early_stopping_rounds <= self._best_rounds:
-            tf_logging.info("Early stopping at step %04d, with loss: %.9f" % (self._counter, loss))
+            tf_logging.info("Early stopping at step %04d, with loss: %.9f" % (self._counter, self._last_loss))
             run_context.request_stop()
 
     def begin(self):
@@ -196,4 +239,8 @@ class ValidationHook:
 
     @property
     def best_loss(self):
-        return self._best_loss  if self._best_loss is not None else np.nan
+        return self._best_loss if self._best_loss is not None else np.nan
+
+    @property
+    def last_loss(self):
+        return self._last_loss
