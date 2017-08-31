@@ -55,6 +55,8 @@ def nn_parse_architecture(arch_str, func_dict):
                 layer['type'] = "pool"
             elif lprop in ("valid", "same"):
                 layer['padding'] = lprop
+            elif re.match('^drop(out)?$', lprop) is not None:
+                layer['dropout'] = True
             elif re.match('^[0-9]+(x[0-9]+)*$', lprop) is not None:
                 shape = [int(dim) for dim in lprop.split("x")]
                 if not arch_list:
