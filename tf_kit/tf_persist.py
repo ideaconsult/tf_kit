@@ -119,11 +119,16 @@ def tf_export_graph(model_path, use_meta_graph=True):
     )
 
 
-def tf_restore_graph(model_path, input_pipe=None, from_scope=None, checkpoint_idx=None):
+def tf_restore_graph(model_path,
+                     input_pipe=None,
+                     model_index=0,
+                     from_scope=None,
+                     checkpoint_idx=None):
     """
     Loads the saved graph and restores the model and the trained variables from given path.
     :param model_path: The path to the saved model to restore from.
     :param input_pipe: The new input_pipe for the model, if needed.
+    :param model_index: The index within standard collections, to retrieve the mode from.
     :param from_scope: Search for specific ops inside this scope.
     :param checkpoint_idx: The exact number of checkpoint to be used for restoring.
     :return: The RestoredModel instance.
@@ -153,7 +158,7 @@ def tf_restore_graph(model_path, input_pipe=None, from_scope=None, checkpoint_id
                                    import_scope="restored")
         saver = None
 
-    model = RestoredModel(input_pipe)
+    model = RestoredModel(input_pipe, collection_idx=model_index)
     trainables = tf.trainable_variables()
     tf_logging.info("Done restoring:\n"
                     "  ...trainable tensors = {:d}\n"

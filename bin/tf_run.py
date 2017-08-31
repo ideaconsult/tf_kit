@@ -38,6 +38,8 @@ argp.add_argument('-m', '--model-path', type=str, metavar="model_path", dest="mo
                   help="The path to the model - both for retrieving and storing.")
 argp.add_argument('-c', '--checkpoint', type=int, dest="checkpoint", default=None,
                   help="Checkpoint number to be used for model restoring.")
+argp.add_argument('-i', '--model-index', type=int, dest="model_index", default=0,
+                  help="The index in the model collection to retrieve it from. Default is 0.")
 argp.add_argument('-g', '--generate', required=False, action="store_true", dest="generate",
                   help="Whether to run the model in generative mode, feeding the latent and printing the output."
                        " The normal mode is `inference` - feed the input and print the latent.")
@@ -51,7 +53,9 @@ if not args.quite:
     tf_logging.set_verbosity(tf.logging.INFO)
 
 # Restore the model
-model, saver, path, checkpoint = tf_restore_graph(args.model_path, checkpoint_idx=args.checkpoint)
+model, saver, path, checkpoint = tf_restore_graph(args.model_path,
+                                                  checkpoint_idx=args.checkpoint,
+                                                  model_index=args.model_index)
 
 assert model is not None
 assert saver is not None
@@ -118,7 +122,7 @@ with tf.Session() as sess:
             tf_logging.info("Output to: %s" % out_name)
             if output_delimiter is None:
                 _, f_ext = os.path.splitext(out_name)
-                output_delimiter = dt_delimiter_from_extension(f_ext)
+                output_delimiter = dt_delimiter_from_ext(f_ext)
 
             with open(out_name, mode="wb") as outf:
                 if args.header is not None:
