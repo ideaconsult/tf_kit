@@ -157,7 +157,6 @@ def tf_get_reuse_variable(name, shape, initializer=None, reuse_dict=None, variab
 
 
 def tf_dense_layer(scope, x, params,
-                   empty_func=False,
                    variables_collection=None,
                    reuse_dict=None,
                    dropout_keeprate=None):
@@ -172,7 +171,6 @@ def tf_dense_layer(scope, x, params,
     :param scope: The tf scope to restrict the variables into
     :param x: The input tensor. Can have it's first dimension unspecified
     :param params: The params dictionary. See above.
-    :param empty_func: Whether the non-linearity function should be skipped.
     :param variables_collection: A collection to add the variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
     :param dropout_keeprate: If dropout is taking place - this is the tensor to be used.
@@ -196,14 +194,13 @@ def tf_dense_layer(scope, x, params,
                                        reuse_dict=reuse_dict,
                                        variables_collection=variables_collection)
 
-    output = tf.add(tf.matmul(x, weights), biases, name=scope) if empty_func or not func else \
+    output = tf.add(tf.matmul(x, weights), biases, name=scope) if func is None else \
         func(tf.add(tf.matmul(x, weights), biases), name=scope)
     return tf.nn.dropout(output, keep_prob=dropout_keeprate) if dropout and dropout_keeprate is not None else output
 
 
 def tf_conv_layer(scope, x, params,
                   transpose=False,
-                  empty_func=False,
                   data_format="NHWC",
                   variables_collection=None,
                   reuse_dict=None,
@@ -226,7 +223,6 @@ def tf_conv_layer(scope, x, params,
     :param x: The input tensor. It'll be reshaped, if `input_shape` is present in the dict.
     :param params: The parameters dictionary.
     :param transpose: Whether a transposed convolution should be constructed. Default is False.
-    :param empty_func: Whether to skip non-linearity transformation. Default is False.
     :param data_format: The ordering of data to be expected from the input tensor.
     :param variables_collection: A collection to add the variables to.
     :param reuse_dict: A dictionary of tensors to be reused instead of creating new ones.
@@ -282,8 +278,7 @@ def tf_conv_layer(scope, x, params,
                                    padding=padding,
                                    data_format=data_format)
 
-    output = tf.add(conv, biases, name=scope) if empty_func or not func \
-        else func(tf.add(conv, biases), name=scope)
+    output = tf.add(conv, biases, name=scope) if func is None else func(tf.add(conv, biases), name=scope)
     return tf.nn.dropout(output, keep_prob=dropout_keeprate) if dropout and dropout_keeprate is not None else output
 
 

@@ -144,14 +144,12 @@ class VarAutoEncoder():
 
         # The hidden layers are ready - now build the last two, first reshaping the last layer, if needed
         z_mean = tf_dense_layer("latent_mean", last_input,
-                                params={ 'size':self.output_size },
-                                variables_collection=self.training_scope,
-                                empty_func=True)
+                                params={ 'size':self.output_size, 'func': None },
+                                variables_collection=self.training_scope)
 
         z_log_sigma_sq = tf_dense_layer("latent_log_sigma_sq", last_input,
-                                        params={ 'size': self.output_size },
-                                        variables_collection=self.training_scope,
-                                        empty_func=True)
+                                        params={ 'size': self.output_size, 'func': None },
+                                        variables_collection=self.training_scope)
         return z_mean, z_log_sigma_sq
 
     def _generator_network(self):

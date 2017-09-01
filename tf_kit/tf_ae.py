@@ -139,9 +139,8 @@ class AutoEncoder():
 
         # The hidden layers are ready - now build the latent variable one
         return tf_dense_layer("latent_z", last_input,
-                              params={ 'size': self.output_size },
-                              variables_collection=self.training_scope,
-                              empty_func=True)
+                              params={ 'size': self.output_size, 'func': None },
+                              variables_collection=self.training_scope)
 
     def _generator_network(self):
         final_layer = { 'func': self.final_func,
