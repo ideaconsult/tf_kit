@@ -91,23 +91,21 @@ class WrappedModel:
         tf.summary.scalar("loss", loss_op)
 
 
-def tf_export_graph(model_path, use_meta_graph=True):
+def tf_export_graph(model_dir, use_meta_graph=True):
     """
     Export the currently constructed graph into the given file. 
-    :param model_path: The path to store the graph to.
+    :param model_dir: The directory to store the mode in.
     :param use_meta_graph: Whether to actually export the whole meta graph.
     """
 
     if use_meta_graph:
-        if not os.path.exists(os.path.dirname(model_path)):
-            os.makedirs(os.path.dirname(model_path))
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+        model_path = os.path.normpath(model_dir + os.path.sep + GRAPH_FILENAME)
         tf.train.export_meta_graph(model_path, clear_devices=True)
     else:
         graph_def = tf.get_default_graph().as_graph_def(add_shapes=True)
-        model_path = tf.train.write_graph(graph_def,
-                                          logdir=os.path.dirname(model_path),
-                                          name=os.path.basename(model_path),
-                                          as_text=True)
+        model_path = tf.train.write_graph(graph_def, logdir=model_dir, name=GRAPH_FILENAME, as_text=True)
 
     trainables = tf.trainable_variables()
     tf_logging.info("Model created in {}\n"
@@ -119,14 +117,14 @@ def tf_export_graph(model_path, use_meta_graph=True):
     )
 
 
-def tf_restore_graph(model_path,
+def tf_restore_graph(model_dir,
                      input_pipe=None,
                      model_index=0,
                      from_scope=None,
                      checkpoint_idx=None):
     """
     Loads the saved graph and restores the model and the trained variables from given path.
-    :param model_path: The path to the saved model to restore from.
+    :param model_dir: The directory to restore the model from.
     :param input_pipe: The new input_pipe for the model, if needed.
     :param model_index: The index within standard collections, to retrieve the mode from.
     :param from_scope: Search for specific ops inside this scope.
@@ -134,10 +132,11 @@ def tf_restore_graph(model_path,
     :return: The RestoredModel instance.
     """
 
-    checkpoint_path = tf.train.latest_checkpoint(os.path.dirname(model_path))
+    checkpoint_path = tf.train.latest_checkpoint(model_dir)
     if checkpoint_path is None:
         # We're dealing with graph_def
-        tf_logging.info("Restoring from graph from `%s`..." % model_path)
+        tf_logging.info("Restoring from graph from `%s`..." % model_dir)
+        model_path = os.path.normpath(model_dir + os.path.sep + GRAPH_FILENAME)
     else:
         if checkpoint_idx is not None:
             checkpoint_path = re.sub(r"\d+$", str(checkpoint_idx), checkpoint_path)

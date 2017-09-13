@@ -27,16 +27,8 @@ argp = argparse.ArgumentParser(
 
 argp.add_argument('-t', '--training-set', type=str, dest="train", nargs='*',
                   help="The list of data files to be used for training.")
-argp.add_argument('-f', '--format', type=str, required=False,
-                  metavar="data_format", default=DT_FORMAT_FILE, dest="format",
-                  help="The format of the input data: `images`, `file`, `array`, `tf_mem` or `tf_pipe`. "
-                       "Default is `%s`." % DT_FORMAT_FILE)
-
 argp.add_argument('-v', '--validation-set', type=str, dest="validate", nargs="*",
                   help="The list of data files to be used for validation. ")
-argp.add_argument('--validation-format', type=str, dest="validate_format", required=False,
-                  help="The format to be used when loading validation set. Default is same as data format.")
-
 argp.add_argument('-d', '--delimiter', type=str, required=False, metavar="delimiter", default=None,
                   dest="delimiter", help="The delimiter to be expected in the data files. Default is whitespace.")
 argp.add_argument('-b', '--batch', type=int, required=False, metavar="batch_size", default=DEF_BATCH, dest="batch_size",

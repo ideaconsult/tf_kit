@@ -42,9 +42,9 @@ Providing this model class:
 """
 
 from tensorflow.python.platform import tf_logging
-from .tf_utils import *
-from .nn_utils import *
-from . import TF_MODELS
+from tf_kit.tf_utils import *
+from tf_kit.nn_utils import *
+from tf_kit import TF_MODELS
 
 DEF_BATCH = 100
 DEF_LEARNING_RATE = .001

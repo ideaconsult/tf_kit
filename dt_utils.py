@@ -5,6 +5,11 @@
 #
 # Author: Ivan (Jonan) Georgiev
 
+"""
+@@ArrayBatchIterator
+@@FileBatchIterator
+"""
+
 import numpy as np
 import random as rnd
 import os
@@ -12,8 +17,7 @@ from .nn_utils import packed_images_reader
 from .dt_constants import *
 
 
-
-class ArrayBatchIter:
+class ArrayBatchIterator:
     """np.array batch iterator"""
     def __init__(self, data,
                  batch_size=100,
@@ -84,7 +88,7 @@ class ArrayBatchIter:
         return self._batch_size
 
 
-class FileBatchIter:
+class FileBatchIterator:
     """CSV file batch retrieval tool"""
     def __init__(self, filenames,
                  delimiter=None,
@@ -238,14 +242,14 @@ def dt_prepare_iterator(filename,
     _, f_ext = os.path.splitext(filename)
 
     if f_ext == ".npy":
-        return ArrayBatchIter(np.load(filename),
+        return ArrayBatchIterator(np.load(filename),
                               batch_size=batch_size,
                               allow_smaller_batch=allow_smaller_batch,
                               num_epochs=num_epochs,
                               shuffle=shuffle)
     elif f_ext == ".gz":
         img_data, num, w, h = packed_images_reader(filename)
-        return ArrayBatchIter(np.reshape(img_data, newshape=[num, w * h]),
+        return ArrayBatchIterator(np.reshape(img_data, newshape=[num, w * h]),
                               batch_size=batch_size,
                               allow_smaller_batch=allow_smaller_batch,
                               num_epochs=num_epochs,
@@ -253,13 +257,13 @@ def dt_prepare_iterator(filename,
     elif os.path.getsize(filename) < DEF_MAX_MEMORY_SIZE:
         if delimiter is None:
             delimiter = dt_delimiter_from_ext(f_ext)
-        return ArrayBatchIter(np.loadtxt(filename, delimiter=delimiter, skiprows=skip_rows),
+        return ArrayBatchIterator(np.loadtxt(filename, delimiter=delimiter, skiprows=skip_rows),
                               batch_size=batch_size,
                               allow_smaller_batch=allow_smaller_batch,
                               num_epochs=num_epochs,
                               shuffle=shuffle)
     else:
-        return FileBatchIter(filename,
+        return FileBatchIterator(filename,
                              delimiter=delimiter,
                              skip_rows=skip_rows,
                              batch_size=batch_size,
@@ -269,7 +273,7 @@ def dt_prepare_iterator(filename,
 
 
 if __name__ == '__main__':
-    files = FileBatchIter(['file1.txt', 'file2.txt', 'file3.txt'],
+    files = FileBatchIterator(['file1.txt', 'file2.txt', 'file3.txt'],
                           batch_size=7,
                           allow_smaller_batch=True,
                           num_epochs=5,

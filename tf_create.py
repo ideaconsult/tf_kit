@@ -9,6 +9,7 @@
 
 import tensorflow as tf
 import argparse
+import os
 from tf_kit import *
 from tf_kit.nn_utils import *
 from tf_kit.tf_utils import *
@@ -67,5 +68,8 @@ else:
     tf.logging.info("Scoping the model in `%s`" % args.scope)
     with tf.variable_scope(args.scope):
         Model(arch, **vars(args))
+
+if not os.path.exists(args.model_path):
+    os.mkdir(args.model_path)
 
 tf_export_graph(args.model_path, use_meta_graph=True)
