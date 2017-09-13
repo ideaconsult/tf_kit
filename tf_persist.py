@@ -118,16 +118,14 @@ def tf_export_graph(model_dir, use_meta_graph=True):
 
 
 def tf_restore_graph(model_dir,
-                     input_pipe=None,
+                     input_var=None,
                      model_index=0,
-                     from_scope=None,
                      checkpoint_idx=None):
     """
     Loads the saved graph and restores the model and the trained variables from given path.
     :param model_dir: The directory to restore the model from.
-    :param input_pipe: The new input_pipe for the model, if needed.
+    :param input_var: The new input_var for the model, if needed.
     :param model_index: The index within standard collections, to retrieve the mode from.
-    :param from_scope: Search for specific ops inside this scope.
     :param checkpoint_idx: The exact number of checkpoint to be used for restoring.
     :return: The RestoredModel instance.
     """
@@ -143,21 +141,10 @@ def tf_restore_graph(model_dir,
         model_path = checkpoint_path + META_EXT
         tf_logging.info("Restoring from checkpoint at `%s`..." % checkpoint_path)
 
-    # Since each time we provide different input, we must initialize new saver, so it can take care for
-    # the newly added variables, thus - we have different scenarios for both graph restorations.
-    input_name = "input_pipe" if from_scope is None else (from_scope + ":" + "input_pipe")
-    if input_pipe is None:
-        # This is pure 'resume previous training' mode.
-        saver = tf.train.import_meta_graph(model_path)
-        input_pipe = tf.get_default_graph().get_tensor_by_name(input_name + ":0")
-    else:
-        # This is 'train with this, new data'
-        tf.train.import_meta_graph(model_path,
-                                   input_map={input_name: input_pipe},
-                                   import_scope="restored")
-        saver = None
+    # The actual resuming of the model
+    saver = tf.train.import_meta_graph(model_path)
+    model = RestoredModel(input_var, collection_idx=model_index)
 
-    model = RestoredModel(input_pipe, collection_idx=model_index)
     trainables = tf.trainable_variables()
     tf_logging.info("Done restoring:\n"
                     "  ...trainable tensors = {:d}\n"

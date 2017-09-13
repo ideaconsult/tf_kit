@@ -50,7 +50,7 @@ class AutoEncoder():
 
     def __init__(self,
                  architecture,
-                 input_pipe=None,
+                 input_var=None,
                  learning_rate=None,
                  equal_weights=False,
                  noise=DEF_NOISE,
@@ -63,7 +63,7 @@ class AutoEncoder():
         """
         Initialize and construct the Auto-encoder architecture.
         :param architecture: The architectue as returned from `nn_utils.nn_parse_architecture`.
-        :param input_pipe: If provided, this will be the data used for training.
+        :param input_var: If provided, this will be the data used for training.
         :param learning_rate: The learning rate to be used with the AdamOptimizer.
         :param equal_weights: Whether to impose equal-weights restriction of corresponding layers
                               of the encoder and decoder.
@@ -88,10 +88,10 @@ class AutoEncoder():
         self.training_scope = training_scope
 
         # Initialize, and possible reshape the input
-        if input_pipe is not None:
-            self.x_in = input_pipe
+        if input_var is not None:
+            self.x_in = input_var
         else:
-            self.x_in = tf.placeholder(dtype=tf.float32, shape=[batch_size, self.input_size], name="input_pipe")
+            self.x_in = tf.placeholder(dtype=tf.float32, shape=[batch_size, self.input_size], name="input_var")
         tf.add_to_collection("inputs", self.x_in)
 
         self.x_shaped = self.x_in if 'sample_shape' not in architecture[0] else \

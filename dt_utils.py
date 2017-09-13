@@ -227,57 +227,67 @@ def dt_prepare_iterator(filename,
                         allow_smaller_batch=False):
     """
     Prepare a data batch iterator which can be used in various places...
-    :param filename: The list of files to be used, or the np.array.
-    :param in_memory: Whether to try to load everything into the memory.
+    :param filename: A file to open.
     :param delimiter: The file delimiter if that is the case.
     :param skip_rows: How many lines to skip, in the case of file format.
     :param batch_size: The batch size to be used.
-    :param shuffle: Whether to shuffle - both filenames and the data.
-    :param num_epochs: Number of epochs to iterate over the files.
+    :param shuffle: Whether to shuffle the data
+    :param num_epochs: Number of epochs to iterate over the file.
     :param allow_smaller_batch: Whether the last batch can be smaller.
     :return: An iterator.
     """
+
+
     if filename is None:
         return None
+    if isinstance(filename, (list, tuple)):
+        return FileBatchIterator(filename,
+                                 skip_rows=skip_rows,
+                                 delimiter=delimiter,
+                                 batch_size=batch_size,
+                                 allow_smaller_batch=allow_smaller_batch,
+                                 num_epochs=num_epochs,
+                                 shuffle=shuffle)
+
     _, f_ext = os.path.splitext(filename)
 
     if f_ext == ".npy":
         return ArrayBatchIterator(np.load(filename),
-                              batch_size=batch_size,
-                              allow_smaller_batch=allow_smaller_batch,
-                              num_epochs=num_epochs,
-                              shuffle=shuffle)
+                                  batch_size=batch_size,
+                                  allow_smaller_batch=allow_smaller_batch,
+                                  num_epochs=num_epochs,
+                                  shuffle=shuffle)
     elif f_ext == ".gz":
         img_data, num, w, h = packed_images_reader(filename)
         return ArrayBatchIterator(np.reshape(img_data, newshape=[num, w * h]),
-                              batch_size=batch_size,
-                              allow_smaller_batch=allow_smaller_batch,
-                              num_epochs=num_epochs,
-                              shuffle=shuffle)
+                                  batch_size=batch_size,
+                                  allow_smaller_batch=allow_smaller_batch,
+                                  num_epochs=num_epochs,
+                                  shuffle=shuffle)
     elif os.path.getsize(filename) < DEF_MAX_MEMORY_SIZE:
         if delimiter is None:
             delimiter = dt_delimiter_from_ext(f_ext)
         return ArrayBatchIterator(np.loadtxt(filename, delimiter=delimiter, skiprows=skip_rows),
-                              batch_size=batch_size,
-                              allow_smaller_batch=allow_smaller_batch,
-                              num_epochs=num_epochs,
-                              shuffle=shuffle)
+                                  batch_size=batch_size,
+                                  allow_smaller_batch=allow_smaller_batch,
+                                  num_epochs=num_epochs,
+                                  shuffle=shuffle)
     else:
-        return FileBatchIterator(filename,
-                             delimiter=delimiter,
-                             skip_rows=skip_rows,
-                             batch_size=batch_size,
-                             allow_smaller_batch=allow_smaller_batch,
-                             num_epochs=num_epochs,
-                             shuffle=shuffle)
+        return FileBatchIterator([filename],
+                                 delimiter=delimiter,
+                                 skip_rows=skip_rows,
+                                 batch_size=batch_size,
+                                 allow_smaller_batch=allow_smaller_batch,
+                                 num_epochs=num_epochs,
+                                 shuffle=shuffle)
 
 
 if __name__ == '__main__':
     files = FileBatchIterator(['file1.txt', 'file2.txt', 'file3.txt'],
-                          batch_size=7,
-                          allow_smaller_batch=True,
-                          num_epochs=5,
-                          shuffle=True)
+                              batch_size=7,
+                              allow_smaller_batch=True,
+                              num_epochs=5,
+                              shuffle=True)
     with open("outfile.txt", "wt") as outf:
         for row in files:
             np.savetxt(outf, row, fmt="%.1f")
