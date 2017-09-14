@@ -25,7 +25,7 @@ argp = argparse.ArgumentParser(
            "The last three are optional."
 )
 
-argp.add_argument('-t', '--training-set', type=str, dest="train", nargs='+',
+argp.add_argument('-t', '--training-set', type=str, dest="train", nargs='*',
                   help="The list of data files to be used for training.")
 argp.add_argument('-v', '--validation-set', type=str, dest="validate", nargs="*",
                   help="The list of data files to be used for validation. ")
@@ -79,7 +79,6 @@ else:
 if args.validate is not None and len(args.validate) == 1:
     args.validate = args.validate[0]
 
-
 # Now prepare the hooks, needed for the training runs.
 hooks = [tf.train.NanTensorHook(model.loss_op)]
 
@@ -105,18 +104,19 @@ else:
         argp.error("You can't specify early stopping steps, if there is no validation set specified!")
     val_hook = None
 
-# Now arrange the other methods of input
-input_x = dt_prepare_iterator(args.train,
-                              delimiter=delimiter,
-                              batch_size=args.batch_size,
-                              shuffle=True,
-                              skip_rows=0,
-                              num_epochs=args.epochs,
-                              allow_smaller_batch=False)
+# Now arrange the other methods of input, if such are passed.
+if args.train is not None:
+    input_x = dt_prepare_iterator(args.train,
+                                  delimiter=delimiter,
+                                  batch_size=args.batch_size,
+                                  shuffle=True,
+                                  skip_rows=0,
+                                  num_epochs=args.epochs,
+                                  allow_smaller_batch=False)
 
-tf_logging.info("Preparing the training data feed...")
-hooks.append(FeedDataHook(feed_op=model.input_var, iterator=input_x))
-tf_logging.info("... done.")
+    tf_logging.info("Preparing the training data feed...")
+    hooks.append(FeedDataHook(feed_op=model.input_var, iterator=input_x))
+    tf_logging.info("... done.")
 
 if not args.quite:
     hooks.append(TrainLogHook(model))
