@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-#####
+#
 # Tensor flow model training and testing tool. Can work with different models.
 # File: The command line tool for invoking the AE class.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 
 import tensorflow as tf

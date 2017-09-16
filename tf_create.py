@@ -27,8 +27,8 @@ argp.add_argument('model', type=str, help="The type of the model to be created. 
 argp.add_argument('arch_description', type=str,
                   help="The description of the architecture, consisting of layer definitions separated by semicolon (:).")
 
-argp.add_argument('-p', '--model-path', type=str, metavar="model_path", dest="model_path", required=True,
-                  help="The path to the model - both for retrieving and storing.")
+argp.add_argument('-m', '--model-dir', type=str, metavar="model_dir", dest="model_dir", required=True,
+                  help="The directory to put the model in.")
 argp.add_argument('-s', '--scope', type=str, required=False, default=None,
                   help="The model-wise scope to put all tensors into. Defaults to None.")
 argp.add_argument('-b', '--batch', type=int, required=False, metavar="batch_size", default=DEF_BATCH, dest="batch_size",
@@ -69,7 +69,7 @@ else:
     with tf.variable_scope(args.scope):
         Model(arch, **vars(args))
 
-if not os.path.exists(args.model_path):
-    os.mkdir(args.model_path)
+if not os.path.exists(args.model_dir):
+    os.mkdir(args.model_dir)
 
-tf_export_graph(args.model_path, use_meta_graph=True)
+tf_export_graph(args.model_dir, use_meta_graph=True)

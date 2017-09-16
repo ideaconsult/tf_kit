@@ -4,7 +4,6 @@
 # and start the training process.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 #
 
@@ -15,6 +14,16 @@ from tf_kit.tf_hooks import *
 from tf_kit.dt_utils import *
 from tf_kit.dt_constants import *
 import argparse
+
+
+# Make some pampering for the training / validation data
+def _pamper_input(inputs, delimiter):
+    if len(inputs) == 1:
+        inputs = inputs[0]
+        delimiter = delimiter or dt_delimiter_from_ext(inputs)
+    else:
+        delimiter = delimiter or " "
+    return inputs, delimiter
 
 
 # Setup the command line arguments base
@@ -69,23 +78,30 @@ if args.batch_size is None:
     args.batch_size = model.batch_size
 assert args.batch_size > 0
 
-# Now make the train and validate trainset more flexible in setting.
-if len(args.train) == 1:
-    args.train = args.train[0]
-    delimiter = args.delimiter or dt_delimiter_from_ext(args.train)
-else:
-    delimiter = args.delimiter or " "
-
-if args.validate is not None and len(args.validate) == 1:
-    args.validate = args.validate[0]
-
-# Now prepare the hooks, needed for the training runs.
+# Now prepare the hooks, starting with the NaN check one.
 hooks = [tf.train.NanTensorHook(model.loss_op)]
+
+# Make the training input hook, if provided. Otherwise, it is expected that
+# the input pipeline is part of the TF's graph.
+if args.train is not None:
+    tf_logging.info("Preparing the training data feed [%s] ... " % (",".join(args.train)))
+    trainset, delimiter = _pamper_input(args.train, args.delimiter)
+    input_x = dt_prepare_iterator(trainset,
+                                  delimiter=delimiter,
+                                  batch_size=args.batch_size,
+                                  shuffle=True,
+                                  skip_rows=0,
+                                  num_epochs=args.epochs,
+                                  allow_smaller_batch=False)
+
+    hooks.append(FeedDataHook(feed_op=model.input_var, iterator=input_x))
+    tf_logging.info("... done.")
 
 # Deal with the input
 if args.validate is not None:
-    tf_logging.info("Preparing the validation data...")
-    val_data = dt_prepare_iterator(args.validate,
+    tf_logging.info("Preparing the validation data [%s] ... " % (",".join(args.validate)))
+    validationset, delimiter = _pamper_input(args.validate, args.delimiter)
+    val_data = dt_prepare_iterator(validationset,
                                    delimiter=delimiter,
                                    skip_rows=0,
                                    batch_size=args.batch_size,
@@ -104,19 +120,6 @@ else:
         argp.error("You can't specify early stopping steps, if there is no validation set specified!")
     val_hook = None
 
-# Now arrange the other methods of input, if such are passed.
-if args.train is not None:
-    input_x = dt_prepare_iterator(args.train,
-                                  delimiter=delimiter,
-                                  batch_size=args.batch_size,
-                                  shuffle=True,
-                                  skip_rows=0,
-                                  num_epochs=args.epochs,
-                                  allow_smaller_batch=False)
-
-    tf_logging.info("Preparing the training data feed...")
-    hooks.append(FeedDataHook(feed_op=model.input_var, iterator=input_x))
-    tf_logging.info("... done.")
 
 if not args.quite:
     hooks.append(TrainLogHook(model))

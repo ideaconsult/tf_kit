@@ -2,7 +2,6 @@
 # General TensorFlow made-easy tools, primary focused on architecture building.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 """
 The TensorFlow persistent provides this, placeholder class:

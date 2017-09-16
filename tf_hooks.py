@@ -2,7 +2,6 @@
 # TensorFlow training and running routines and classes.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 #
 """

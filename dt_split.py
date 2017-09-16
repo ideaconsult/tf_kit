@@ -3,7 +3,6 @@
 # Data splitting tool, capable of handling multiple files at once.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 
 from __future__ import print_function

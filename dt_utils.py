@@ -2,7 +2,6 @@
 # General Data handling utils, like file and np array iterators.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 
 """

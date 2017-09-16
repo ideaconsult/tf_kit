@@ -1,3 +1,5 @@
+# Some generic constants to be used throughout the library
+#
 # Copyright (C) 2017, IDEAConsult Ltd.
 # Author: Ivan (Jonan) Georgiev
 

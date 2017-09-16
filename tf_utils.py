@@ -2,17 +2,21 @@
 # General TensorFlow made-easy tools, primary focused on architecture building.
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 
 import tensorflow as tf
 import numpy as np
 import re
 
+TF_SELU_LAMBDA = 1.0507009873554804934193349852946
+TF_SELU_ALPHA = 1.6732632423543772848170429916717
+
 # The dictionary used during normal architecture
 TF_FUNC_DICT = { 'relu': tf.nn.relu,
                  'relu6': tf.nn.relu6,
                  'elu': tf.nn.elu,
+                 'selu': lambda x, name: tf.multiply(tf.where(x >= .0, x, tf.nn.elu(x) * TF_SELU_ALPHA),
+                                                     TF_SELU_LAMBDA, name=name),
                  'sigmoid': tf.nn.sigmoid,
                  'tanh': tf.nn.tanh,
                  'id': tf.identity }

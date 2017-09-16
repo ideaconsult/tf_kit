@@ -3,7 +3,6 @@
 # File: Some general tools, including data loading
 #
 # Copyright (C) 2017, IDEAConsult Ltd.
-#
 # Author: Ivan (Jonan) Georgiev
 
 from __future__ import print_function
