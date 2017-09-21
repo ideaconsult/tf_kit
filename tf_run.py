@@ -94,22 +94,21 @@ else:
     step_op = model.output_var
     feed_op = model.input_var
 
-dropout_rate = tf.get_default_graph().get_tensor_by_name("dropout_rate:0")
-aux_feeds = { dropout_rate: 1.} if dropout_rate is not None else None
+aux_feeds = {drop_var:1. for drop_var in tf.get_collection("rates") if drop_var.name.startswith("dropout_rate")}
 
 with tf.Session() as sess:
     saver.restore(sess, checkpoint)
     i = 0
     for inf in args.test:
         tf_logging.info("Acting on: %s" % inf)
-        input = dt_prepare_iterator(inf,
-                                    delimiter=args.delimiter,
-                                    skip_rows=1 if args.header is not None else 0,
-                                    batch_size=model.batch_size,
-                                    allow_smaller_batch=True,
-                                    num_epochs=1)
+        input_x = dt_prepare_iterator(inf,
+                                      delimiter=args.delimiter,
+                                      skip_rows=1 if args.header is not None else 0,
+                                      batch_size=model.batch_size,
+                                      allow_smaller_batch=True,
+                                      num_epochs=1)
         if args.output is None:
-            tf_static_iteration(sess, input,
+            tf_static_iteration(sess, input_x,
                                 ops=step_op,
                                 input_op=feed_op,
                                 batch_size=model.batch_size,
@@ -128,7 +127,7 @@ with tf.Session() as sess:
                     bb = (str(args.header) + "\n").encode()
                     outf.write(bb)
                 output_stream = outf
-                tf_static_iteration(sess, input,
+                tf_static_iteration(sess, input_x,
                                     ops=step_op,
                                     input_op=feed_op,
                                     batch_size=model.batch_size,

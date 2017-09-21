@@ -42,6 +42,8 @@ argp.add_argument('-d', '--delimiter', type=str, required=False, metavar="delimi
                   dest="delimiter", help="The delimiter to be expected in the data files. Default is whitespace.")
 argp.add_argument('-b', '--batch', type=int, required=False, metavar="batch_size", default=None, dest="batch_size",
                   help="The size of the mini-batches. Default is derived from the model.")
+argp.add_argument('-r', '--dropout-rate', type=float, required=False, dest="dropout_rate",
+                  help="The dropout rate, if such layers exist and the rate is defined as tensor. ")
 
 argp.add_argument('-m', '--model-dir', type=str, metavar="model_dir", dest="model_dir", required=True,
                   help="The path to the model - both for retrieving and storing.")
@@ -124,6 +126,12 @@ else:
 if not args.quite:
     hooks.append(TrainLogHook(model))
 
+# Have some work on the dropout setup
+if args.dropout_rate is not None:
+    train_feed = { drop_var:(1. - args.dropout_rate) for drop_var in tf.get_collection("rates") if drop_var.name.startswith("dropout_rate")}
+else:
+    train_feed = None
+
 # Now come the actual training loop
 loss = None
 with tf.train.MonitoredTrainingSession(is_chief=True,
@@ -133,7 +141,7 @@ with tf.train.MonitoredTrainingSession(is_chief=True,
                                        save_checkpoint_secs=args.checkpoint_secs,
                                        save_summaries_steps=args.summary_steps) as sess:
     while not sess.should_stop():
-        _, loss = sess.run((model.train_op, model.loss_op))
+        _, loss = sess.run((model.train_op, model.loss_op), feed_dict=train_feed)
 
 tf_logging.info("Training finished w/ last training loss = %.9f" % loss)
 if val_hook is not None:
