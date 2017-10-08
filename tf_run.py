@@ -65,7 +65,7 @@ display_step = 10
 output_delimiter = args.delimiter
 
 if args.output is None:
-    output_stream = sys.stdout.buffer if hasattr(sys.stdout, 'buffer') else sys.stdout.buffer
+    output_stream = sys.stdout.buffer if hasattr(sys.stdout, 'buffer') else sys.stdout
 else:
     output_stream = None
 

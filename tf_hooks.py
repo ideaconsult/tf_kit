@@ -173,21 +173,25 @@ class ValidationHook:
                  data_iterator,
                  every_n_steps=50,
                  early_stopping_rounds=10,
-                 report_fn=None):
+                 report_fn=None,
+                 feed_fn=None):
         """
-
+        A hook for performing validation step.
         :param model: The dictionary / object to retrieve `loss_op` and `input_var` tensors. 
         :param data_iterator: The input data for the validation runs.
         :param every_n_steps: On how many steps to perform validation.
         :param early_stopping_rounds: After how many validation rounds without loss improvement to call
                 for early stopping.
-        :param report_fn: The function to report each validation result to: { lambda counter, loss } 
+        :param report_fn: The function to report each validation result to: { lambda counter, loss }
+        :param feed_fn: The pre-processing function of format (sess, input) -> {feed dict}
+
         """
         self._model = model
         self._iterator = data_iterator
         self._every_n_steps = every_n_steps
         self._early_stopping_rounds = early_stopping_rounds
         self._report_fn = report_fn
+        self._feed_fn = feed_fn
         self._last_round = 0
         self._last_loss = np.nan
         self._counter = 0
@@ -196,7 +200,7 @@ class ValidationHook:
         self._best_step = 0
 
     def _run_validation(self, sess):
-        return tf_validation_run(sess, self._model, self._iterator)
+        return tf_validation_run(sess, self._model, self._iterator, self._feed_fn)
 
     def before_run(self, run_context):
         pass
@@ -219,7 +223,8 @@ class ValidationHook:
             self._report_fn(self._counter, self._last_loss)
 
         if self._early_stopping_rounds is not None and self._early_stopping_rounds <= self._best_rounds:
-            tf_logging.info("Early stopping at step %04d, with loss: %.9f" % (self._counter, self._last_loss))
+            if self._report_fn is not None:
+                self._report_fn(self._counter, self._last_loss, True)
             run_context.request_stop()
 
     def begin(self):
@@ -230,7 +235,8 @@ class ValidationHook:
 
     def after_create_session(self, sess, coord):
         loss = self._run_validation(sess)
-        tf_logging.info("Initial validation loss: %.9f" % loss)
+        if self._report_fn is not None:
+            self._report_fn(0, loss)
 
     @property
     def best_step(self):

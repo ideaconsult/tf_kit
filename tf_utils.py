@@ -484,8 +484,9 @@ def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, r
         else:
             padding = 0
 
-        feeds[input_op] = x
-        result = sess.run(ops, feed_dict=feeds)
+        feed_dict = feeds(sess, x) if callable(feeds) else feeds
+        feed_dict[input_op] = x
+        result = sess.run(ops, feed_dict=feed_dict)
 
         if result_idx is not None and padding > 0:
             if isinstance(ops, tuple) or isinstance(ops, list):
@@ -507,12 +508,12 @@ def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, r
                 _make_step(xx)
 
 
-def tf_validation_run(sess, model, iterator):
+def tf_validation_run(sess, model, iterator, feeds=None):
     """
-
     :param sess:
     :param model:
     :param iterator:
+    :param feeds:
     :return:
     """
     loss_stat = { 'loss': .0, 'count': 0 }
@@ -527,6 +528,7 @@ def tf_validation_run(sess, model, iterator):
                         input_op=model.input_var,
                         batch_size=model.batch_size,
                         result_idx=None,
+                        feeds=feeds,
                         iter_fn=lambda res, x:_accumulate(loss_stat, res, x))
 
     return loss_stat["loss"] / loss_stat["count"]
