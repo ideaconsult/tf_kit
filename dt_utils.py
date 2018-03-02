@@ -19,7 +19,7 @@ from .dt_constants import *
 class ArrayBatchIterator:
     """np.array batch iterator"""
     def __init__(self, data,
-                 batch_size=100,
+                 batch_size=DEF_BATCH,
                  allow_smaller_batch=False,
                  shuffle=False,
                  num_epochs=None):
@@ -92,7 +92,7 @@ class FileBatchIterator:
     def __init__(self, filenames,
                  delimiter=None,
                  skip_rows=0,
-                 batch_size=100,
+                 batch_size=DEF_BATCH,
                  allow_smaller_batch=False,
                  num_epochs=None,
                  shuffle=False,
@@ -220,7 +220,7 @@ def dt_delimiter_from_ext(f_ext):
 def dt_prepare_iterator(filename,
                         delimiter=None,
                         skip_rows=0,
-                        batch_size=100,
+                        batch_size=DEF_BATCH,
                         shuffle=False,
                         num_epochs=None,
                         allow_smaller_batch=False):

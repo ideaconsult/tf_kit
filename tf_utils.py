@@ -477,7 +477,7 @@ def tf_loss_function(name):
 
 
 def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, result_idx=None, iter_fn=None):
-    def _make_step(x):
+    def _make_step(x, idx=0):
         if x.shape[0] < batch_size:
             padding = batch_size - x.shape[0]
             x = np.append(x, np.array([[.0] * x.shape[1]] * padding), axis=0)
@@ -493,7 +493,8 @@ def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, r
                 result[result_idx] = result[result_idx][:batch_size - padding]
             else:
                 result = result[:batch_size - padding]
-        iter_fn(result, x)
+        iter_fn(result, x, idx)
+        return x.shape[0]
 
     if feeds is None:
         feeds = dict()
@@ -501,11 +502,11 @@ def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, r
     if isinstance(iterator, (list, np.ndarray)):
         _make_step(iterator)
     else:
+        row_idx = 0
         for xx in iterator:
             if xx.shape[0] == 0:
                 break
-            else:
-                _make_step(xx)
+            row_idx += _make_step(xx, row_idx)
 
 
 def tf_validation_run(sess, model, iterator, feeds=None):
