@@ -488,11 +488,14 @@ def tf_static_iteration(sess, iterator, ops, input_op, batch_size, feeds=None, r
         feed_dict[input_op] = x
         result = sess.run(ops, feed_dict=feed_dict)
 
-        if result_idx is not None and padding > 0:
-            if isinstance(ops, tuple) or isinstance(ops, list):
+        if padding > 0:
+            x = x[:batch_size - padding]
+            if not isinstance(ops, tuple) and not isinstance(ops, list):
+                result = result[:batch_size - padding]
+            elif result_idx is not None:
                 result[result_idx] = result[result_idx][:batch_size - padding]
             else:
-                result = result[:batch_size - padding]
+                result = result[:][:batch_size - padding]
         iter_fn(result, x, idx)
         return x.shape[0]
 
