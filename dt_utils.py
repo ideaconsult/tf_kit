@@ -22,7 +22,8 @@ class ArrayBatchIterator:
                  batch_size=DEF_BATCH,
                  allow_smaller_batch=False,
                  shuffle=False,
-                 num_epochs=None):
+                 num_epochs=None,
+                 feed_fn=None):
         """
         Iterate on a numpy array, shuffling it, if needed
         :param data: The data as np.array()
@@ -30,6 +31,7 @@ class ArrayBatchIterator:
         :param allow_smaller_batch: Whether the last batch can be smaller.
         :param shuffle: Whether to shuffle data.
         :param num_epochs: Number of epochs of data iteration.
+        :param feed_fn: Optional feed function, invoked on given data entries
         """
         self._num_epochs = num_epochs if num_epochs is not None else MAX_EPOCHS
         self._shuffle = shuffle
@@ -38,6 +40,7 @@ class ArrayBatchIterator:
         self._data_len = len(data)
         self._num_batches = int((self._data_len + batch_size - 1) / batch_size)
         self._allow_smaller = allow_smaller_batch
+        self._feed_fn = feed_fn
         self.__iter__()
 
     def __iter__(self):
@@ -56,20 +59,21 @@ class ArrayBatchIterator:
 
         if self._idx <= self._data_len:
             assert x.shape[0] == self._batch_size
-            return x
+            return x if self._feed_fn is None else self._feed_fn(x)
 
         self._epoch += 1
         if self._epoch >= self._num_epochs:
             if not self._allow_smaller or x.shape[0] == 0:
                 raise StopIteration
-            return x
+            return x if self._feed_fn is None else self._feed_fn(x)
 
         # Reshuffle the data again
         if self._shuffle:
             np.random.shuffle(self._data)
         self._idx = self._batch_size - x.shape[0]
 
-        return np.concatenate((x, self._data[:self._idx]), axis=0)
+        x = np.concatenate((x, self._data[:self._idx]), axis=0)
+        return x if self._feed_fn is None else self._feed_fn(x)
 
     def next(self):
         return self.__next__()
